@@ -14,13 +14,13 @@
 <script>
   // ── PASTE YOUR FIREBASE CONFIG HERE (same project as vote.html) ──────────
   const FIREBASE_CONFIG = {
-    apiKey:            "REPLACE_WITH_YOUR_API_KEY",
-    authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL:       "https://REPLACE_WITH_YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
-    storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-    appId:             "REPLACE_WITH_YOUR_APP_ID",
+    apiKey:            "AIzaSyDAP8vdCkcdATOt69ntxg1iINPtdNShjMk",
+    authDomain:        "moneymoves-au.firebaseapp.com",
+    databaseURL:       "https://moneymoves-au-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "moneymoves-au",
+    storageBucket:     "moneymoves-au.firebasestorage.app",
+    messagingSenderId: "236144878356",
+    appId:             "1:236144878356:web:5c21dfc4730b5a32e95801",
   };
   // ─────────────────────────────────────────────────────────────────────────
   const DEMO_MODE = Object.values(FIREBASE_CONFIG).some(v => v.includes('REPLACE_WITH'));
@@ -180,6 +180,14 @@
   .final-cta h2 { color: white; }
   .final-cta .form-card { margin: 24px auto 0; }
 
+  /* Beta counter */
+  .beta-meta { margin-bottom: 14px; }
+  .spots-text { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
+  .spots-text strong { color: var(--ink); }
+  .beta-bar-wrap { height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .beta-bar-fill { height: 100%; background: var(--green); border-radius: 99px; transition: width .5s ease; }
+  #hero-full-state { display: none; }
+
   /* Footer */
   footer { padding: 32px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); }
   footer p + p { margin-top: 6px; }
@@ -210,12 +218,39 @@
 
 <header class="hero">
   <div class="container">
-    <span class="pill">⚡ Free tool — live now</span>
+    <span class="pill" id="hero-pill">🎉 Beta — reserve one of 50 free PDF spots</span>
     <h1>Pay down debt, save, or <em>buy that car?</em><br />Get your answer in 2 minutes.</h1>
     <p class="sub">A free decision tool built for Australians. Tell it about your loans, savings and goals — get a ranked action plan in plain English. No financial adviser. No 40-page PDF. No upsell to insurance.</p>
 
-    <a href="app.html" class="form-card" style="display: inline-flex; align-items: center; justify-content: center; background: var(--green); color: white; text-decoration: none; font-size: 18px; font-weight: 700; padding: 18px 36px; border-radius: 14px;">Try it free — takes 2 minutes →</a>
-    <p class="micro" style="margin-top: 16px;"><strong>Free</strong> on-screen plan · Optional A$14 PDF · No login · Nothing stored</p>
+    <div class="form-card" style="max-width: 500px;">
+
+      <!-- Beta open: claim a spot -->
+      <div id="hero-open-state">
+        <div class="beta-meta">
+          <p class="spots-text"><strong id="hero-spots-num">—</strong> of 50 free PDF spots remaining</p>
+          <div class="beta-bar-wrap"><div class="beta-bar-fill" id="hero-bar" style="width:0%"></div></div>
+        </div>
+        <form class="form-row" id="signup-form" novalidate>
+          <input type="email" id="email-1" placeholder="your@email.com.au" required />
+          <button type="submit">Reserve my free spot →</button>
+        </form>
+        <p class="micro">Reserve your spot · run the 2-min tool · we'll email your personalised PDF. No spam.</p>
+        <div class="success" id="success-1">✓ Spot reserved — <a href="app.html" style="color:var(--green-dark);font-weight:700;">run the tool now to generate your PDF →</a></div>
+      </div>
+
+      <!-- Beta full: join waitlist -->
+      <div id="hero-full-state">
+        <p style="font-weight:700;font-size:16px;margin-bottom:8px;">🔒 Beta is full — 50/50 spots taken.</p>
+        <p style="font-size:14px;color:var(--ink-soft);margin-bottom:14px;">Join the waitlist and we'll email you at launch.</p>
+        <form class="form-row" id="waitlist-form-hero" novalidate>
+          <input type="email" id="waitlist-email-hero" placeholder="your@email.com.au" required />
+          <button type="submit" style="background:var(--ink);">Join waitlist</button>
+        </form>
+        <div class="success" id="waitlist-success-hero">✓ You're on the list — we'll email you at launch.</div>
+      </div>
+
+    </div>
+    <p class="micro" style="margin-top: 14px;"><strong>Free</strong> on-screen plan · Reserve a spot · Run the tool · Get your PDF. No login. Nothing stored.</p>
   </div>
 </header>
 
@@ -271,7 +306,7 @@
       <div class="step">
         <div class="step-num">3</div>
         <h3>Get your action plan</h3>
-        <p>Plain-English, step-by-step. Free version on screen. Optional A$14 PDF if you want a personalised report to print or share.</p>
+        <p>Plain-English, step-by-step. Free plan on screen. Beta users also get a personalised PDF emailed to them — free.</p>
       </div>
     </div>
   </div>
@@ -296,9 +331,10 @@
         </ul>
       </div>
       <div class="price-tag">
-        <div class="price">A$14<span class="price-cents">.00</span></div>
-        <div class="price-sub">one-off · no subscription</div>
-        <a href="app.html" class="price-cta">Try it free →</a>
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:var(--green-dark);margin-bottom:6px;">BETA PRICE</div>
+        <div class="price" style="color:var(--green);">FREE</div>
+        <div class="price-sub">first 50 users · then A$14</div>
+        <a href="#signup" class="price-cta" style="background:var(--green);">Reserve your free spot →</a>
       </div>
     </div>
   </div>
@@ -328,10 +364,33 @@
   <div class="container">
     <div class="final-cta">
       <h2>Ready? Get your plan in 2 minutes.</h2>
-      <p style="opacity: 0.9; margin-top: 8px;">Free to use. No login. No bank details. No upsells.</p>
-      <div style="margin: 24px auto 0; text-align: center;">
-        <a href="app.html" style="display: inline-block; background: white; color: var(--green-dark); padding: 16px 36px; border-radius: 10px; font-size: 18px; font-weight: 700; text-decoration: none;">Try the free tool →</a>
-        <p class="micro" style="margin-top: 14px; color: rgba(255,255,255,0.75);">Free on-screen plan · Optional A$14 PDF · Nothing stored</p>
+      <p style="opacity: 0.9; margin-top: 8px;">Free to use. No login. No bank details. Beta users get the PDF free.</p>
+      <div class="form-card" style="margin: 24px auto 0;">
+
+        <!-- Beta open -->
+        <div id="footer-open-state">
+          <div class="beta-meta">
+            <p class="spots-text"><strong id="footer-spots-num">—</strong> of 50 free PDF spots remaining</p>
+            <div class="beta-bar-wrap"><div class="beta-bar-fill" id="footer-bar" style="width:0%"></div></div>
+          </div>
+          <form class="form-row" id="signup-form-2" novalidate>
+            <input type="email" id="email-2" placeholder="your@email.com.au" required />
+            <button type="submit">Reserve my free spot →</button>
+          </form>
+          <div class="success" id="success-2">✓ Spot reserved — <a href="app.html" style="color:var(--green-dark);font-weight:700;">run the tool now to generate your PDF →</a></div>
+          <p class="micro" style="margin-top: 10px; color: rgba(0,0,0,0.5);">No spam. Unsubscribe any time.</p>
+        </div>
+
+        <!-- Beta full -->
+        <div id="footer-full-state" style="display:none;">
+          <p style="font-weight:700;font-size:16px;margin-bottom:8px;">🔒 Beta is full — 50/50 spots taken.</p>
+          <form class="form-row" id="waitlist-form-footer" novalidate>
+            <input type="email" id="waitlist-email-footer" placeholder="your@email.com.au" required />
+            <button type="submit" style="background:var(--ink);">Join waitlist</button>
+          </form>
+          <div class="success" id="waitlist-success-footer">✓ You're on the list — we'll email you at launch.</div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -348,51 +407,104 @@
 </footer>
 
 <script>
+  const BETA_LIMIT = 50;
+  const DEMO_BETA_COUNT = 12; // shown when Firebase not connected
+
   // FAQ accordion
   document.querySelectorAll('.faq-item').forEach(item => {
     item.querySelector('.faq-q').addEventListener('click', () => item.classList.toggle('open'));
   });
 
-  // Visitor counter
-  function initVisitorCounter() {
-    const el = document.getElementById('visitor-count');
+  function updateBetaUI(count) {
+    const remaining = Math.max(0, BETA_LIMIT - count);
+    const pct = Math.min(100, (count / BETA_LIMIT) * 100);
+    const isFull = count >= BETA_LIMIT;
+
+    // Hero
+    const heroSpots = document.getElementById('hero-spots-num');
+    const heroBar   = document.getElementById('hero-bar');
+    if (heroSpots) heroSpots.textContent = remaining;
+    if (heroBar)   heroBar.style.width = pct + '%';
+    document.getElementById('hero-open-state').style.display = isFull ? 'none' : 'block';
+    document.getElementById('hero-full-state').style.display = isFull ? 'block' : 'none';
+
+    // Footer
+    const footerSpots = document.getElementById('footer-spots-num');
+    const footerBar   = document.getElementById('footer-bar');
+    if (footerSpots) footerSpots.textContent = remaining;
+    if (footerBar)   footerBar.style.width = pct + '%';
+    document.getElementById('footer-open-state').style.display = isFull ? 'none' : 'block';
+    document.getElementById('footer-full-state').style.display = isFull ? 'block' : 'none';
+
+    // Visitor count stat
+    const vc = document.getElementById('visitor-count');
+    if (vc) vc.textContent = (count + 1243).toLocaleString('en-AU');
+  }
+
+  function claimBetaSpot(email, onSuccess) {
     if (DEMO_MODE) {
-      el.textContent = (1847).toLocaleString('en-AU');
+      console.log('[Demo] Beta spot claimed for:', email);
+      onSuccess();
       return;
     }
-    firebase.initializeApp(FIREBASE_CONFIG);
-    const ref = firebase.database().ref('visitors');
-    // Increment on every page load
-    ref.transaction(v => (v || 0) + 1);
-    // Display live count
-    ref.on('value', snap => {
-      const n = snap.val() || 0;
-      el.textContent = n.toLocaleString('en-AU');
-    });
+    const db = firebase.database();
+    // Store email (keyed by encoded address to deduplicate)
+    const safeKey = btoa(email).replace(/[.#$[\]]/g, '_');
+    db.ref('beta/emails/' + safeKey).set({ email, ts: Date.now() });
+    // Increment counter atomically
+    db.ref('beta/count').transaction(v => Math.min(BETA_LIMIT, (v || 0) + 1), () => onSuccess());
   }
-  initVisitorCounter();
 
-  // Mock form handler — replace action with Mailchimp / ConvertKit / Formspree URL when live
-  function handleForm(formId, successId, emailId) {
+  function saveWaitlist(email, onSuccess) {
+    if (DEMO_MODE) {
+      console.log('[Demo] Waitlist:', email);
+      onSuccess();
+      return;
+    }
+    const safeKey = btoa(email).replace(/[.#$[\]]/g, '_');
+    firebase.database().ref('waitlist/' + safeKey).set({ email, ts: Date.now() }, () => onSuccess());
+  }
+
+  function wireForm(formId, emailId, successId, isBeta) {
     const form = document.getElementById(formId);
     if (!form) return;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', e => {
       e.preventDefault();
       const email = document.getElementById(emailId).value.trim();
-      if (!email || !email.includes('@')) {
-        alert('Pop in a valid email so we can let you know.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        document.getElementById(emailId).style.borderColor = 'var(--accent)';
         return;
       }
-      // TODO: POST to your real email service here.
-      // Example: fetch('https://formspree.io/f/YOUR_ID', { method: 'POST', body: new FormData(form) })
-      console.log('Captured email:', email);
-      form.querySelector('.form-row').style.display = 'none';
-      form.querySelector('.micro').style.display = 'none';
-      document.getElementById(successId).style.display = 'block';
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      btn.textContent = '...';
+      const done = () => {
+        form.style.display = 'none';
+        const micro = form.parentElement.querySelector('.micro');
+        if (micro) micro.style.display = 'none';
+        document.getElementById(successId).style.display = 'block';
+      };
+      if (isBeta) claimBetaSpot(email, done);
+      else        saveWaitlist(email, done);
     });
   }
-  handleForm('signup-form', 'success-1', 'email-1');
-  handleForm('signup-form-2', 'success-2', 'email-2');
+
+  wireForm('signup-form',        'email-1',              'success-1',              true);
+  wireForm('signup-form-2',      'email-2',              'success-2',              true);
+  wireForm('waitlist-form-hero', 'waitlist-email-hero',  'waitlist-success-hero',  false);
+  wireForm('waitlist-form-footer','waitlist-email-footer','waitlist-success-footer',false);
+
+  // Init Firebase + live beta counter
+  if (DEMO_MODE) {
+    updateBetaUI(DEMO_BETA_COUNT);
+  } else {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firebase.database().ref('beta/count').on('value', snap => {
+      updateBetaUI(snap.val() || 0);
+    });
+    // Visitor counter (separate from beta)
+    firebase.database().ref('visitors').transaction(v => (v || 0) + 1);
+  }
 </script>
 
 </body>

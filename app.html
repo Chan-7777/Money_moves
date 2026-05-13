@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en-AU">
 <head>
 <meta charset="UTF-8" />
@@ -23,8 +23,33 @@
   const SITE_URL = 'https://moneymoves.com.au';
 </script>
 
-<!-- PayPal JS SDK — deferred so it never blocks page JS -->
+<!-- PayPal JS SDK — kept for post-beta re-enable -->
 <script defer src="https://www.paypal.com/sdk/js?client-id=AcJTaBFXoVRsk2ls2zjZ2t7hnIlFWDl3t1yQfU1t9tg1FJo3Bwcdl1ZcFJymPVjHkVxb2mofwYoxMGSJ&currency=AUD&intent=capture"></script>
+
+<!-- Firebase — beta counter (same project as index.html) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+  const FIREBASE_CONFIG_APP = {
+    apiKey:            "AIzaSyDAP8vdCkcdATOt69ntxg1iINPtdNShjMk",
+    authDomain:        "moneymoves-au.firebaseapp.com",
+    databaseURL:       "https://moneymoves-au-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "moneymoves-au",
+    storageBucket:     "moneymoves-au.firebasestorage.app",
+    messagingSenderId: "236144878356",
+    appId:             "1:236144878356:web:5c21dfc4730b5a32e95801",
+  };
+  const DEMO_MODE_BETA = Object.values(FIREBASE_CONFIG_APP).some(v => v.includes('REPLACE_WITH'));
+  const BETA_LIMIT_APP = 50;
+  let _firebaseAppInited = false;
+  function getFirebaseDb() {
+    if (!_firebaseAppInited) {
+      firebase.initializeApp(FIREBASE_CONFIG_APP, 'app');
+      _firebaseAppInited = true;
+    }
+    return firebase.app('app').database();
+  }
+</script>
 
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
@@ -445,7 +470,7 @@
       Nothing is stored
     </div>
     <h1>Your 2-minute money check-in.</h1>
-    <p class="lede">Built for Australians — no jargon, no bank login. Tell us a few rough numbers and we’ll rank what to do first: debt, emergency savings, car, or investing. Works with rough estimates.</p>
+    <p class="lede">Built for Australians — no jargon, no bank login. Tell us a few rough numbers and we'll rank what to do first: debt, emergency savings, car, or investing. Works with rough estimates.</p>
     <div class="progress" id="progress">
       <div class="progress-step active"></div>
       <div class="progress-step"></div>
@@ -475,13 +500,13 @@
 
     <div class="field">
       <label for="income">Your <span class="cycle-label">monthly</span> paycheque <span class="hint">(after tax)</span></label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="income" placeholder="e.g. 6500" min="0" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="income" placeholder="e.g. 6500" min="0" onfocus="this.select()" /></div>
       <div class="field-error" id="income-err">Please enter your take-home pay.</div>
     </div>
 
     <div class="field">
       <label for="expenses">Regular living costs <span class="hint">(rent or mortgage, groceries, power, phone, fuel, insurance, rego — not loan repayments)</span></label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="expenses" placeholder="e.g. 3800" min="0" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="expenses" placeholder="e.g. 3800" min="0" onfocus="this.select()" /></div>
       <div class="field-error" id="expenses-err">Please enter your living costs (zero is unlikely).</div>
     </div>
 
@@ -497,7 +522,7 @@
 
     <div class="field">
       <label for="savings">Emergency savings you can access quickly <span class="hint">(offset account, high-interest savings)</span></label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="savings" placeholder="e.g. 3000" min="0" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="savings" placeholder="e.g. 3000" min="0" onfocus="this.select()" /></div>
       <div class="field-error" id="savings-err">If you have no savings, enter 0 — leaving it blank skips important logic.</div>
     </div>
 
@@ -806,15 +831,15 @@ function addDebtRow() {
     </div>
     <div class="field" style="margin: 0;">
       <label>Balance</label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" data-k="balance" placeholder="e.g. 5,000" min="0" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" data-k="balance" placeholder="e.g. 5,000" min="0" onfocus="this.select()" /></div>
     </div>
     <div class="field" style="margin: 0;">
       <label>Rate</label>
-      <div class="input-wrap no-prefix"><input type="number" data-k="rate" placeholder="e.g. 18.9" step="0.1" min="0" /><span class="suffix">% p.a.</span></div>
+      <div class="input-wrap no-prefix"><input type="number" data-k="rate" placeholder="e.g. 18.9" step="0.1" min="0" onfocus="this.select()" /><span class="suffix">% p.a.</span></div>
     </div>
     <div class="field" style="margin: 0;">
       <label>Min/mo</label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" data-k="min" placeholder="e.g. 120" min="0" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" data-k="min" placeholder="e.g. 120" min="0" onfocus="this.select()" /></div>
     </div>
     <button class="btn-icon" onclick="this.parentElement.remove()" title="Remove">×</button>
   `;
@@ -1203,31 +1228,31 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
     `;
   }
 
-  html += `<h3 style="margin: 24px 0 12px; font-size: 18px;">Here’s what to tackle first</h3>`;
+  html += `<h3 style="margin: 24px 0 12px; font-size: 18px;">Here's what to tackle first</h3>`;
   moves.forEach((m, i) => {
-    const cls = i === 0 ? ‘priority-1’ : i === 1 ? ‘priority-2’ : ‘priority-3’;
+    const cls = i === 0 ? 'priority-1' : i === 1 ? 'priority-2' : 'priority-3';
     const t = m.title.toLowerCase();
-    let sticker = { src: ‘stickers/kangaroo.png’, label: ‘MONEY MOVES 💪’ };
-    // ATO must be checked before generic ‘clear’ to avoid wrong match
-    if      (t.includes(‘ato’) || t.includes(‘spending more’) || t.includes(‘no real surplus’))
-                                                                   sticker = { src: ‘stickers/cockatoo.png’, label: ‘PAY YOUR BILLS MATE!! 📢’ };
-    else if (t.includes(‘buffer’) || t.includes(‘emergency’))      sticker = { src: ‘stickers/wombat.png’,   label: ‘BUILDING THAT BUFFER 🧱’ };
-    else if (t.includes(‘attack’) || t.includes(‘clear’) || t.includes(‘repayment’))
-                                                                   sticker = { src: ‘stickers/emu.png’,       label: ‘DEBT FREE OR BUST 🏃’ };
-    else if (t.includes(‘car’) || t.includes(‘dealer’) || t.includes(‘bank loan’) || t.includes(‘bank/credit’) || t.includes(‘waiting’))
-                                                                   sticker = { src: ‘stickers/platypus.png’,  label: ‘NAH MATE, USE THE BANK 🧮’ };
-    else if (t.includes(‘hecs’) || t.includes(‘invest’) || t.includes(‘great shape’))
-                                                                   sticker = { src: ‘stickers/koala.png’,     label: ‘SAVINGS ON AUTOPILOT 😴’ };
-    else if (surplus < 100)                                        sticker = { src: ‘stickers/cockatoo.png’,  label: ‘PAY YOUR BILLS MATE!! 📢’ };
+    let sticker = { src: 'stickers/kangaroo.png', label: 'MONEY MOVES 💪' };
+    // ATO must be checked before generic 'clear' to avoid wrong match
+    if      (t.includes('ato') || t.includes('spending more') || t.includes('no real surplus'))
+                                                                   sticker = { src: 'stickers/cockatoo.png', label: 'PAY YOUR BILLS MATE!! 📢' };
+    else if (t.includes('buffer') || t.includes('emergency'))      sticker = { src: 'stickers/wombat.png',   label: 'BUILDING THAT BUFFER 🧱' };
+    else if (t.includes('attack') || t.includes('clear') || t.includes('repayment'))
+                                                                   sticker = { src: 'stickers/emu.png',       label: 'DEBT FREE OR BUST 🏃' };
+    else if (t.includes('car') || t.includes('dealer') || t.includes('bank loan') || t.includes('bank/credit') || t.includes('waiting'))
+                                                                   sticker = { src: 'stickers/platypus.png',  label: 'NAH MATE, USE THE BANK 🧮' };
+    else if (t.includes('hecs') || t.includes('invest') || t.includes('great shape'))
+                                                                   sticker = { src: 'stickers/koala.png',     label: 'SAVINGS ON AUTOPILOT 😴' };
+    else if (surplus < 100)                                        sticker = { src: 'stickers/cockatoo.png',  label: 'PAY YOUR BILLS MATE!! 📢' };
     html += `
       <div class="move">
         <div class="move-num ${cls}">${i + 1}</div>
         <div style="flex:1">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
             <h4>${m.title}</h4>
-            <div style="text-align:center;flex-shrink:0;">
-              <img src="${sticker.src}" alt="${sticker.label}" style="width:52px;height:52px;object-fit:contain;" loading="lazy">
-              <div style="font-size:9px;font-weight:700;color:var(--ink-soft);letter-spacing:0.04em;margin-top:2px;">${sticker.label}</div>
+            <div style="text-align:center;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <img src="${sticker.src}" alt="${sticker.label}" style="width:88px;height:88px;object-fit:contain;display:block;" loading="lazy">
+              <div style="font-size:10px;font-weight:800;color:var(--ink);letter-spacing:0.05em;background:var(--green-soft);border-radius:999px;padding:3px 10px;white-space:nowrap;">${sticker.label}</div>
             </div>
           </div>
           <p>${m.body}</p>
@@ -1266,16 +1291,51 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
     </div>
   `;
 
-  // ─── PDF Upsell — wired to Stripe Payment Link
+  // ─── PDF section — beta: free; post-beta: waitlist
   html += `
-    <div class="upsell">
-      <h3>Want this as a personalised PDF?</h3>
-      <p>Your full plan plus 12-month repayment schedule, side-by-side car loan scenarios with stress tests (rate +2%, income −15%), and a printable version to share with your partner or accountant.</p>
-      <p style="margin-bottom: 18px;"><span class="price-strike">A$19</span><strong style="font-size: 20px; color: var(--ink);">A$14</strong> · one-off · no subscription</p>
-      <div id="paypal-button-container" style="margin-top: 4px;"></div>
-      <p style="font-size: 12px; color: var(--ink-soft); margin-top: 10px;">Secure checkout via PayPal. PDF emailed within 2 minutes.</p>
+    <div class="upsell" id="pdf-section">
+
+      <div id="pdf-loading" style="text-align:center;padding:12px;color:var(--ink-soft);font-size:14px;">Loading…</div>
+
+      <!-- Beta open: free PDF download -->
+      <div id="pdf-beta-open" style="display:none;">
+        <h3>Download your personalised PDF — free (beta)</h3>
+        <p style="margin-bottom:14px;">Full plan + 12-month repayment schedule + car loan scenarios. Free for the first 50 beta users.</p>
+        <div style="margin-bottom:14px;">
+          <p style="font-size:13px;color:var(--ink-soft);margin-bottom:5px;"><strong id="pdf-spots-num">—</strong> of 50 free spots remaining</p>
+          <div style="height:6px;background:var(--line);border-radius:99px;overflow:hidden;"><div id="pdf-bar" style="height:100%;background:var(--green);border-radius:99px;transition:width .4s;width:0%"></div></div>
+        </div>
+        <button id="pdf-download-btn" onclick="downloadPdf()" style="padding:14px 28px;background:var(--green);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;">⬇ Download my PDF</button>
+        <div id="pdf-error" style="display:none;padding:14px;background:#fdecea;border-radius:8px;color:var(--red);margin-top:10px;">Something went wrong — please try again.</div>
+      </div>
+
+      <!-- Beta full: waitlist -->
+      <div id="pdf-beta-full" style="display:none;">
+        <h3>Beta is over — join the waitlist</h3>
+        <p style="margin-bottom:14px;">All 50 free spots have been taken. Enter your email and we'll let you know at launch (with an early-bird price).</p>
+        <div style="display:flex;gap:8px;">
+          <input type="email" id="pdf-waitlist-email" placeholder="your@email.com.au" style="flex:1;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;outline:none;" />
+          <button onclick="joinPdfWaitlist()" style="padding:12px 20px;background:var(--ink);color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Join waitlist</button>
+        </div>
+        <div id="pdf-waitlist-success" style="display:none;padding:14px;background:#f0f7f3;border-radius:8px;color:var(--green-dark);font-weight:600;margin-top:10px;">✓ You're on the list — we'll email you at launch.</div>
+      </div>
+
     </div>
   `;
+
+  // ─── Car teaser — only when user skipped the car step
+  if (state.car.considering !== 'yes') {
+    html += `
+      <div style="background:#f0f7f3;border:1px solid #c5ddd0;border-radius:12px;padding:16px 20px;margin-top:20px;display:flex;align-items:center;gap:14px;">
+        <div style="font-size:28px;flex-shrink:0;">🚗</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#1b262c;margin-bottom:3px;">Planning to buy a car?</div>
+          <div style="font-size:13px;color:#4a5d66;">Re-run the tool and fill out Step 3 to see a dealer vs bank loan comparison — most Australians overpay by A$3,000–8,000 by skipping this.</div>
+        </div>
+        <button class="btn btn-secondary" onclick="resetApp()" style="flex-shrink:0;font-size:13px;padding:8px 14px;">Re-run →</button>
+      </div>
+    `;
+  }
 
   // ─── Disclaimer (broken into shorter sentences)
   html += `
@@ -1296,7 +1356,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   `;
 
   document.getElementById('results').innerHTML = html;
-  initPayPalButton();
+  initPdfSection();
 
   // Wire up results-email form after injection
   const ef = document.getElementById('results-email-form');
@@ -1364,11 +1424,81 @@ function shareReddit() {
   window.open(`https://www.reddit.com/r/AusFinance/submit?title=${title}&url=${url}`, '_blank');
 }
 
-/* ───── PayPal checkout ───── */
+/* ───── Beta PDF section ───── */
+async function initPdfSection() {
+  clearLocalDraft();
+  if (DEMO_MODE_BETA) {
+    showPdfBetaOpen(12);
+    return;
+  }
+  try {
+    const snap = await getFirebaseDb().ref('beta/count').once('value');
+    const count = snap.val() || 0;
+    if (count >= BETA_LIMIT_APP) showPdfBetaFull();
+    else showPdfBetaOpen(count);
+  } catch (e) {
+    showPdfBetaOpen(0);
+  }
+}
+
+function showPdfBetaOpen(count) {
+  const remaining = Math.max(0, BETA_LIMIT_APP - count);
+  document.getElementById('pdf-loading').style.display = 'none';
+  document.getElementById('pdf-beta-open').style.display = 'block';
+  document.getElementById('pdf-spots-num').textContent = remaining;
+  document.getElementById('pdf-bar').style.width = Math.min(100, (count / BETA_LIMIT_APP) * 100) + '%';
+}
+
+function showPdfBetaFull() {
+  document.getElementById('pdf-loading').style.display = 'none';
+  document.getElementById('pdf-beta-full').style.display = 'block';
+}
+
+async function downloadPdf() {
+  const btn = document.getElementById('pdf-download-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Generating…';
+  try {
+    const resp = await fetch('/api/free-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state }),
+    });
+    if (!resp.ok) throw new Error('server error');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'MoneyMoves_AU_Plan.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.innerHTML = '✓ Downloaded';
+    btn.style.background = 'var(--green-dark)';
+  } catch (e) {
+    document.getElementById('pdf-error').style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '⬇ Download my PDF';
+  }
+}
+
+async function joinPdfWaitlist() {
+  const emailInput = document.getElementById('pdf-waitlist-email');
+  const email = emailInput.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    emailInput.style.borderColor = 'var(--red)';
+    return;
+  }
+  if (!DEMO_MODE_BETA) {
+    const safeKey = btoa(email).replace(/[.#$[\]]/g, '_');
+    await getFirebaseDb().ref('waitlist/' + safeKey).set({ email, ts: Date.now() });
+  }
+  document.getElementById('pdf-waitlist-success').style.display = 'block';
+}
+
+/* ───── PayPal checkout (kept for post-beta re-enable) ───── */
 function initPayPalButton() {
   const container = document.getElementById('paypal-button-container');
   if (!container || typeof paypal === 'undefined') return;
-  clearLocalDraft();
   paypal.Buttons({
     style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 48 },
     createOrder: async () => {

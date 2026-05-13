@@ -230,7 +230,7 @@ const fmtDateShort = (offsetDays) => {
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 function buildCover(state, derived) {
-  const isSample = !state.email || state.email.toLowerCase().includes('example');
+  const isSample = false;
   const top = derived.topMove;
 
   const cover = [
@@ -602,7 +602,7 @@ function buildActionChecklist(state, derived) {
     bullet([arial('ATO payment plans: ', { size: 22, bold: true }), arial('ato.gov.au — set up online if you owe under A$100k', { size: 22 })]),
     bullet([arial('Comparison rates explained: ', { size: 22, bold: true }), arial('moneysmart.gov.au/loans/comparison-rate', { size: 22 })]),
     spacer(280),
-    small('"Re-run the free tool" link will be moneymoves.com.au once the domain is live. Until then, use the URL the PDF email links to.'),
+    small('Re-run the free tool any time at moneymoves-au.vercel.app — results update as your situation changes.'),
     spacer(360),
     p([
       arial('General information only. ', { size: 18, italics: true, bold: true, color: COLOR_INK_SOFT }),
