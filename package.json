@@ -1,0 +1,16 @@
+{
+  "name": "moneymoves-au",
+  "version": "1.0.0",
+  "description": "MoneyMoves AU — Australian personal finance tool",
+  "main": "build_pdf_report.js",
+  "scripts": {
+    "report": "node build_pdf_report.js",
+    "dev": "vercel dev"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "docx": "^9.6.1"
+  }
+}

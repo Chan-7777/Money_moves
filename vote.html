@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>What should we build next? — MoneyMoves AU</title>
+<meta name="description" content="Vote on which MoneyMoves AU features matter most to you. Top-ranked requests get built first." />
+
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
+
+<!--
+  ════════════════════════════════════════════════════════════
+  FIREBASE SETUP — 5 minutes, completely free
+  ════════════════════════════════════════════════════════════
+  1. Go to https://console.firebase.google.com
+  2. Create a new project (any name, disable Analytics if asked)
+  3. Build → Realtime Database → Create database → Start in TEST MODE
+  4. Project Settings (gear icon) → Your apps → Add web app (</>)
+  5. Copy the firebaseConfig object and paste it below
+  6. In Realtime Database → Rules, paste:
+     { "rules": { ".read": true, ".write": true } }
+     (tighten before going live: restrict writes per-session)
+  ════════════════════════════════════════════════════════════
+-->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+  // ── REPLACE THESE WITH YOUR FIREBASE PROJECT VALUES ──────────────────────
+  const FIREBASE_CONFIG = {
+    apiKey:        "REPLACE_WITH_YOUR_API_KEY",
+    authDomain:    "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL:   "https://REPLACE_WITH_YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:     "REPLACE_WITH_YOUR_PROJECT_ID",
+    storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+    appId:         "REPLACE_WITH_YOUR_APP_ID",
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+  const DEMO_MODE = Object.values(FIREBASE_CONFIG).some(v => v.includes('REPLACE_WITH'));
+</script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #4a7c59;
+    --green-dark: #32583f;
+    --green-soft: #eef3f0;
+    --ink: #1b262c;
+    --ink-soft: #4a5d66;
+    --bg: #f9f8f6;
+    --card: #ffffff;
+    --line: #e8e6e1;
+    --gold: #d4a373;
+    --gold-soft: #fdf6ee;
+    --red: #c95d53;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    color: var(--ink); background: var(--bg);
+    line-height: 1.55; -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+  nav {
+    padding: 16px 0; border-bottom: 1px solid var(--line);
+    background: rgba(249,248,246,0.95); backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .nav-inner { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-weight: 800; font-size: 18px; color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .logo span { color: var(--green); }
+  .nav-back { font-size: 13px; color: var(--ink-soft); text-decoration: none; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; transition: border-color .15s, color .15s; }
+  .nav-back:hover { color: var(--ink); border-color: var(--ink); }
+
+  header { padding: 56px 0 40px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 6px; background: var(--green-soft); color: var(--green-dark); padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 16px; letter-spacing: 0.04em; }
+  h1 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+  .sub { font-size: 17px; color: var(--ink-soft); max-width: 58ch; margin-bottom: 8px; }
+
+  .total-bar {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; color: var(--ink-soft); margin-top: 16px;
+    padding: 8px 14px; background: white; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .total-bar strong { color: var(--ink); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .5; transform: scale(1.3); } }
+
+  /* Demo banner */
+  .demo-banner {
+    background: #fffbe6; border: 1px solid #e8c766; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 24px; font-size: 13px; color: #6b4f00;
+  }
+  .demo-banner strong { color: #4a3500; }
+
+  /* Feature grid */
+  .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+  @media (max-width: 640px) { .features-grid { grid-template-columns: 1fr; } }
+
+  .feature-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px; display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.02), 0 4px 12px rgba(13,27,30,.04);
+    transition: border-color .2s, box-shadow .2s;
+    position: relative; overflow: hidden;
+  }
+  .feature-card.voted { border-color: var(--green); }
+  .feature-card.top-ranked { border-color: var(--gold); }
+
+  .rank-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; letter-spacing: 0.04em;
+  }
+  .rank-1 { background: var(--gold); color: var(--ink); }
+  .rank-2 { background: #e8e4dd; color: var(--ink-soft); }
+  .rank-3 { background: #f0ede6; color: var(--ink-soft); }
+  .rank-other { display: none; }
+
+  .feature-icon { font-size: 28px; line-height: 1; }
+  .feature-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; padding-right: 52px; }
+  .feature-desc { font-size: 14px; color: var(--ink-soft); line-height: 1.5; flex: 1; }
+
+  .feature-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+  .vote-count { font-size: 13px; color: var(--ink-soft); }
+  .vote-count strong { color: var(--ink); font-size: 15px; }
+
+  .vote-bar-wrap { height: 4px; background: var(--line); border-radius: 99px; margin-top: 2px; overflow: hidden; }
+  .vote-bar { height: 100%; background: var(--green); border-radius: 99px; transition: width .6s ease; }
+  .feature-card.top-ranked .vote-bar { background: var(--gold); }
+
+  .btn-vote {
+    padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 700;
+    cursor: pointer; border: none; font-family: inherit; transition: background .15s;
+  }
+  .btn-vote.unvoted { background: var(--green); color: white; }
+  .btn-vote.unvoted:hover { background: var(--green-dark); }
+  .btn-vote.voted { background: var(--green-soft); color: var(--green-dark); cursor: default; }
+  .btn-vote:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  footer { padding: 40px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); margin-top: 64px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container nav-inner">
+    <a href="index.html" class="logo">Money<span>Moves</span> AU</a>
+    <a href="app.html" class="nav-back">Try the free tool →</a>
+  </div>
+</nav>
+
+<header>
+  <div class="container">
+    <div class="eyebrow">🗳 Community roadmap</div>
+    <h1>What should we build next?</h1>
+    <p class="sub">Vote for the features that would help you most. The most-requested ideas get built first — we update this page live as votes come in.</p>
+    <div class="total-bar">
+      <div class="pulse"></div>
+      <span><strong id="total-votes">—</strong> votes cast so far</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div id="demo-banner" class="demo-banner" style="display:none;">
+    <strong>Demo mode</strong> — Firebase isn't connected yet, so votes aren't saved. See the setup instructions in the HTML source to wire up real-time voting in 5 minutes.
+  </div>
+  <div class="features-grid" id="features-grid">
+    <!-- Cards injected by JS -->
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    MoneyMoves AU · <a href="index.html" style="color:inherit;">Home</a> · <a href="app.html" style="color:inherit;">Try the tool</a>
+    <br/><br/>
+    Your vote is anonymous. One vote per browser. Feature order updates live as votes come in.
+  </div>
+</footer>
+
+<script>
+/* ── Feature definitions ──────────────────────────────────── */
+const FEATURES = [
+  {
+    id: 'super',
+    icon: '📊',
+    title: 'Super & retirement planner',
+    desc: 'Model your superannuation balance at retirement, salary sacrifice impact, and whether you\'re on track for the ASFA comfortable standard.',
+  },
+  {
+    id: 'firsthome',
+    icon: '🏠',
+    title: 'First home buyer guide',
+    desc: 'FHSS calculator, stamp duty by state, LVR vs LMI tradeoff, and a personalised deposit timeline based on your savings rate.',
+  },
+  {
+    id: 'investments',
+    icon: '💹',
+    title: 'Investment starter',
+    desc: 'ETF vs managed fund vs direct shares vs extra super — ranked by after-tax expected return for your income bracket.',
+  },
+  {
+    id: 'taxreturn',
+    icon: '🧾',
+    title: 'Tax return estimator',
+    desc: 'Rough ATO refund or bill estimate based on income, deductions, and PAYG withheld. Work from home, vehicle, and WFH deductions included.',
+  },
+  {
+    id: 'budgettracker',
+    icon: '📅',
+    title: 'Fortnightly budget tracker',
+    desc: 'Ongoing spending vs budget with fortnightly cadence, category breakdown, and alerts when you\'re trending over on non-essential categories.',
+  },
+  {
+    id: 'mortgagevsrent',
+    icon: '🏦',
+    title: 'Mortgage vs rent calculator',
+    desc: 'Should I buy now or keep renting? Models total cost of each path over 5, 10, and 20 years including stamp duty, rates, and opportunity cost.',
+  },
+];
+
+/* ── State ─────────────────────────────────────────────────── */
+const LS_VOTED_KEY = 'moneymoves_voted_features';
+const votedFeatures = new Set(JSON.parse(localStorage.getItem(LS_VOTED_KEY) || '[]'));
+let liveCounts = {};  // { featureId: voteCount }
+
+function saveVotedFeatures() {
+  localStorage.setItem(LS_VOTED_KEY, JSON.stringify([...votedFeatures]));
+}
+
+/* ── Render ────────────────────────────────────────────────── */
+function renderCards() {
+  const grid = document.getElementById('features-grid');
+  const sorted = [...FEATURES].sort((a, b) => (liveCounts[b.id] || 0) - (liveCounts[a.id] || 0));
+  const maxVotes = Math.max(1, ...sorted.map(f => liveCounts[f.id] || 0));
+  const totalVotes = sorted.reduce((s, f) => s + (liveCounts[f.id] || 0), 0);
+
+  document.getElementById('total-votes').textContent = totalVotes.toLocaleString('en-AU');
+
+  grid.innerHTML = sorted.map((f, idx) => {
+    const votes = liveCounts[f.id] || 0;
+    const pct = Math.round((votes / maxVotes) * 100);
+    const hasVoted = votedFeatures.has(f.id);
+    const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other';
+    const rankLabel = idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`;
+    const cardClass = hasVoted ? 'feature-card voted' : idx === 0 ? 'feature-card top-ranked' : 'feature-card';
+
+    return `
+      <div class="${cardClass}" data-id="${f.id}">
+        <span class="rank-badge ${rankClass}">${rankLabel}</span>
+        <div class="feature-icon">${f.icon}</div>
+        <div class="feature-title">${f.title}</div>
+        <div class="feature-desc">${f.desc}</div>
+        <div class="vote-bar-wrap"><div class="vote-bar" style="width:${pct}%"></div></div>
+        <div class="feature-footer">
+          <div class="vote-count"><strong>${votes.toLocaleString('en-AU')}</strong> vote${votes !== 1 ? 's' : ''}</div>
+          <button class="btn-vote ${hasVoted ? 'voted' : 'unvoted'}"
+            onclick="castVote('${f.id}')"
+            ${hasVoted ? 'disabled' : ''}>
+            ${hasVoted ? '✓ Voted' : 'Vote'}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ── Vote ──────────────────────────────────────────────────── */
+function castVote(featureId) {
+  if (votedFeatures.has(featureId)) return;
+  votedFeatures.add(featureId);
+  saveVotedFeatures();
+  liveCounts[featureId] = (liveCounts[featureId] || 0) + 1;
+  renderCards();
+
+  if (!DEMO_MODE) {
+    const db = firebase.database();
+    db.ref(`features/${featureId}/votes`).transaction(v => (v || 0) + 1);
+  }
+}
+
+/* ── Firebase ──────────────────────────────────────────────── */
+function initFirebase() {
+  if (DEMO_MODE) {
+    document.getElementById('demo-banner').style.display = 'block';
+    // Seed plausible demo counts so the page isn't empty
+    liveCounts = { super: 87, firsthome: 142, investments: 63, taxreturn: 109, budgettracker: 54, mortgagevsrent: 78 };
+    renderCards();
+    return;
+  }
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  // Listen for live vote updates
+  db.ref('features').on('value', snap => {
+    const data = snap.val() || {};
+    FEATURES.forEach(f => {
+      liveCounts[f.id] = data[f.id] ? data[f.id].votes || 0 : 0;
+    });
+    renderCards();
+  });
+}
+
+initFirebase();
+</script>
+
+</body>
+</html>

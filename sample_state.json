@@ -1,0 +1,27 @@
+{
+  "_comment": "Example state for testing the PDF renderer. Mirrors what app.html builds.",
+  "income": 7200,
+  "expenses": 4200,
+  "savings": 3500,
+  "debts": [
+    { "type": "credit_card", "balance": 6800, "rate": 19.99, "min": 220 },
+    { "type": "personal_loan", "balance": 11000, "rate": 12.5, "min": 280 }
+  ],
+  "car": {
+    "considering": "yes",
+    "price": 32000,
+    "deposit": 5000,
+    "dealerRate": 9.5,
+    "bankRate": 6.99,
+    "term": 5,
+    "balloon": "no",
+    "balloonAmount": 0,
+    "novated": "no"
+  },
+  "goal": "balance",
+  "email": "user@example.com.au",
+  "_post_purchase": {
+    "annualKms": 15000,
+    "salaryPackaging": false
+  }
+}

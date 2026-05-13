@@ -1,0 +1,19 @@
+{
+  "email": "test@example.com",
+  "income": 6000,
+  "expenses": 3500,
+  "savings": 15000,
+  "debts": [],
+  "car": {
+    "considering": "no",
+    "price": 0,
+    "deposit": 0,
+    "dealerRate": 0,
+    "bankRate": 0,
+    "term": 5,
+    "balloon": "no",
+    "balloonAmount": 0,
+    "novated": "no"
+  },
+  "goal": "balance"
+}

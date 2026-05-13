@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Free 2-minute Australian money decision tool. Find out whether to pay down debt, save, or buy that car — without paying a financial adviser." />
+<title>Should I pay debt, save, or buy that car? — MoneyMoves AU</title>
+
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+  // ── PASTE YOUR FIREBASE CONFIG HERE (same project as vote.html) ──────────
+  const FIREBASE_CONFIG = {
+    apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+    authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL:       "https://REPLACE_WITH_YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
+    storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+    appId:             "REPLACE_WITH_YOUR_APP_ID",
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+  const DEMO_MODE = Object.values(FIREBASE_CONFIG).some(v => v.includes('REPLACE_WITH'));
+</script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #00843d;
+    --green-dark: #006b31;
+    --gold: #ffcd00;
+    --ink: #0d1b1e;
+    --ink-soft: #3a4a4d;
+    --bg: #f7f6f1;
+    --card: #ffffff;
+    --line: #e6e3d8;
+    --accent: #d64545;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+    background: rgba(247,246,241,0.92);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .nav-inner { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+  .logo span { color: var(--green); }
+  .nav-cta {
+    background: var(--ink); color: white; padding: 10px 18px; border-radius: 8px;
+    text-decoration: none; font-weight: 600; font-size: 14px;
+  }
+  .nav-cta:hover { background: var(--green); }
+
+  /* Hero */
+  .hero { padding: 72px 0 56px; }
+  .pill {
+    display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: #e8f3ec; color: var(--green-dark); font-weight: 600;
+    font-size: 13px; margin-bottom: 20px; letter-spacing: 0.01em;
+  }
+  h1 {
+    font-size: clamp(34px, 5.5vw, 58px);
+    line-height: 1.05; letter-spacing: -0.025em; font-weight: 800;
+    margin-bottom: 20px; max-width: 14ch;
+  }
+  h1 em { color: var(--green); font-style: normal; }
+  .sub {
+    font-size: clamp(17px, 2vw, 20px); color: var(--ink-soft);
+    max-width: 56ch; margin-bottom: 32px;
+  }
+
+  .form-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 24px; max-width: 520px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 8px 24px rgba(13,27,30,0.06);
+  }
+  .form-row { display: flex; gap: 8px; }
+  .form-card input[type="email"] {
+    flex: 1; padding: 14px 16px; border: 1px solid var(--line);
+    border-radius: 10px; font-size: 16px; font-family: inherit;
+    background: #fafaf6; outline: none;
+  }
+  .form-card input[type="email"]:focus { border-color: var(--green); background: white; }
+  .form-card button {
+    padding: 14px 22px; background: var(--green); color: white;
+    border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .form-card button:hover { background: var(--green-dark); }
+  .micro { font-size: 13px; color: var(--ink-soft); margin-top: 12px; }
+  .micro strong { color: var(--ink); }
+  .success { display: none; padding: 16px; background: #e8f3ec; border-radius: 10px; color: var(--green-dark); font-weight: 600; }
+
+  /* Trust bar */
+  .trust-bar { padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fdfcf7; }
+  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; text-align: center; }
+  .trust-stat { font-weight: 800; font-size: 22px; color: var(--ink); }
+  .trust-label { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+
+  /* Sections */
+  section { padding: 72px 0; }
+  .section-head { max-width: 56ch; margin-bottom: 48px; }
+  h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 14px; }
+  .lede { font-size: 18px; color: var(--ink-soft); }
+
+  /* Problem cards */
+  .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .problem-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+  .problem-q { font-weight: 700; font-size: 17px; margin-bottom: 8px; }
+  .problem-a { color: var(--ink-soft); font-size: 15px; }
+
+  /* How it works */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .step { padding: 24px; background: var(--card); border-radius: 12px; border: 1px solid var(--line); }
+  .step-num {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; margin-bottom: 14px;
+  }
+  .step h3 { font-size: 18px; margin-bottom: 6px; }
+  .step p { color: var(--ink-soft); font-size: 15px; }
+
+  /* Pricing */
+  .pricing-wrap { background: var(--card); border-radius: 16px; padding: 40px; border: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .pricing-left h3 { font-size: 26px; margin-bottom: 12px; }
+  .pricing-left p { color: var(--ink-soft); margin-bottom: 16px; }
+  .check-list { list-style: none; }
+  .check-list li { padding: 8px 0; padding-left: 28px; position: relative; color: var(--ink-soft); }
+  .check-list li::before {
+    content: "✓"; position: absolute; left: 0; top: 8px;
+    color: var(--green); font-weight: 800;
+  }
+  .price-tag {
+    background: linear-gradient(135deg, #fff8e6 0%, #fff 100%);
+    border: 1px solid var(--gold); border-radius: 14px; padding: 28px; text-align: center;
+  }
+  .price { font-size: 48px; font-weight: 800; letter-spacing: -0.02em; }
+  .price-cents { font-size: 22px; vertical-align: top; }
+  .price-sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 20px; }
+  .price-cta {
+    display: inline-block; background: var(--ink); color: white; padding: 14px 28px;
+    border-radius: 10px; text-decoration: none; font-weight: 700; width: 100%;
+  }
+
+  /* Quote */
+  .quote-section { background: var(--ink); color: #f0eee6; padding: 80px 0; }
+  .quote {
+    font-size: clamp(22px, 3vw, 30px); line-height: 1.4; max-width: 800px;
+    letter-spacing: -0.01em; font-weight: 500;
+  }
+  .quote-author { margin-top: 20px; color: #b9b6a8; font-size: 15px; }
+
+  /* FAQ */
+  .faq-item { border-bottom: 1px solid var(--line); padding: 18px 0; }
+  .faq-q { font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; }
+  .faq-a { color: var(--ink-soft); padding-top: 10px; display: none; font-size: 15px; }
+  .faq-item.open .faq-a { display: block; }
+  .faq-item.open .faq-q::after { content: "−"; }
+  .faq-q::after { content: "+"; font-size: 22px; color: var(--ink-soft); }
+
+  /* Final CTA */
+  .final-cta {
+    background: var(--green); color: white; padding: 60px 40px; border-radius: 16px;
+    text-align: center;
+  }
+  .final-cta h2 { color: white; }
+  .final-cta .form-card { margin: 24px auto 0; }
+
+  /* Footer */
+  footer { padding: 32px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); }
+  footer p + p { margin-top: 6px; }
+  .disclaimer { max-width: 70ch; margin: 0 auto; font-size: 12px; line-height: 1.6; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .trust-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .problem-grid, .steps { grid-template-columns: 1fr; }
+    .pricing-wrap { grid-template-columns: 1fr; padding: 28px; }
+    .form-row { flex-direction: column; }
+    .hero { padding: 48px 0 36px; }
+    section { padding: 56px 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container nav-inner">
+    <div class="logo">Money<span>Moves</span> AU</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <a href="vote.html" style="font-size:13px;color:var(--ink-soft);text-decoration:none;padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-weight:600;">🗳 Vote on features</a>
+      <a href="app.html" class="nav-cta">Try it free →</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <span class="pill">⚡ Free tool — live now</span>
+    <h1>Pay down debt, save, or <em>buy that car?</em><br />Get your answer in 2 minutes.</h1>
+    <p class="sub">A free decision tool built for Australians. Tell it about your loans, savings and goals — get a ranked action plan in plain English. No financial adviser. No 40-page PDF. No upsell to insurance.</p>
+
+    <a href="app.html" class="form-card" style="display: inline-flex; align-items: center; justify-content: center; background: var(--green); color: white; text-decoration: none; font-size: 18px; font-weight: 700; padding: 18px 36px; border-radius: 14px;">Try it free — takes 2 minutes →</a>
+    <p class="micro" style="margin-top: 16px;"><strong>Free</strong> on-screen plan · Optional A$14 PDF · No login · Nothing stored</p>
+  </div>
+</header>
+
+<div class="trust-bar">
+  <div class="container trust-grid">
+    <div><div class="trust-stat">2 min</div><div class="trust-label">to your action plan</div></div>
+    <div><div class="trust-stat">$0</div><div class="trust-label">to use the calculator</div></div>
+    <div><div class="trust-stat">100%</div><div class="trust-label">Australian-focused</div></div>
+    <div><div class="trust-stat" id="visitor-count">—</div><div class="trust-label">Australians used this</div></div>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <div class="section-head">
+      <h2>Sound familiar?</h2>
+      <p class="lede">Most Australians don't have $4,000 to drop on a financial planner. So they ask Reddit, Facebook groups, or their mate at the BBQ. We built this for them.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-q">"Should I pay off my car loan early or save?"</div>
+        <div class="problem-a">Depends on the rate, your buffer, and whether there's an early-exit fee. We do the maths so you don't have to.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-q">"Dealer finance vs bank loan?"</div>
+        <div class="problem-a">Balloon payments, comparison rates, secured vs unsecured — we'll flag the traps before you sign.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-q">"ATO debt, HECS, credit card — what first?"</div>
+        <div class="problem-a">Get a ranked priority list based on your real interest rates and cashflow. No guessing.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="background: #fdfcf7; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
+  <div class="container">
+    <div class="section-head">
+      <h2>How it works</h2>
+      <p class="lede">Built around how the AusFinance community actually thinks about money — turned into a tool you can use in two minutes.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Tell us your numbers</h3>
+        <p>Loan balances, interest rates, emergency savings, and any car you're eyeing. Nothing identifying — no Tax File Number, no login.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>We rank the moves</h3>
+        <p>Our engine prioritises: keep buffer → kill high-interest debt → ATO → HECS → invest. Tailored to your rates and goals.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Get your action plan</h3>
+        <p>Plain-English, step-by-step. Free version on screen. Optional A$14 PDF if you want a personalised report to print or share.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-head">
+      <h2>The free tool stays free.</h2>
+      <p class="lede">Premium PDF is optional — only if you want a deeper, personalised plan you can save or send to your partner.</p>
+    </div>
+    <div class="pricing-wrap">
+      <div class="pricing-left">
+        <h3>The Personal Money Plan PDF</h3>
+        <p>Everything in the free tool, plus:</p>
+        <ul class="check-list">
+          <li>Side-by-side car loan scenarios (secured / unsecured / dealer)</li>
+          <li>12-month month-by-month repayment roadmap</li>
+          <li>Personalised debt priority order with rationale</li>
+          <li>Buffer + savings target calculator</li>
+          <li>Printable, shareable, no logins required</li>
+        </ul>
+      </div>
+      <div class="price-tag">
+        <div class="price">A$14<span class="price-cents">.00</span></div>
+        <div class="price-sub">one-off · no subscription</div>
+        <a href="app.html" class="price-cta">Try it free →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="quote-section">
+  <div class="container">
+    <p class="quote">"Most personal finance content tells Australians what to think. We just wanted a tool that helps you decide — using the same logic an experienced AusFinance commenter would walk you through, but in 2 minutes instead of 200 replies."</p>
+    <p class="quote-author">— MoneyMoves AU team</p>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <div class="section-head">
+      <h2>Frequently asked</h2>
+    </div>
+    <div class="faq-item"><div class="faq-q">Is this financial advice?</div><div class="faq-a">No. MoneyMoves AU is a general educational tool. It is not personal financial advice and is not a substitute for a licensed Australian financial adviser. Use the output as a starting point for your own thinking or a conversation with a professional.</div></div>
+    <div class="faq-item"><div class="faq-q">Do I need to give you my bank details?</div><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></div>
+    <div class="faq-item"><div class="faq-q">Is my information private?</div><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></div>
+    <div class="faq-item"><div class="faq-q">Is the tool live now?</div><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. No waitlist, no login, no bank details required.</div></div>
+    <div class="faq-item"><div class="faq-q">Why charge for the PDF?</div><div class="faq-a">It keeps the free tool genuinely free, with no ads and no affiliate links pushing you to a particular bank or lender. The PDF is optional and only worth buying if you want the full personalised plan.</div></div>
+  </div>
+</section>
+
+<section id="signup">
+  <div class="container">
+    <div class="final-cta">
+      <h2>Ready? Get your plan in 2 minutes.</h2>
+      <p style="opacity: 0.9; margin-top: 8px;">Free to use. No login. No bank details. No upsells.</p>
+      <div style="margin: 24px auto 0; text-align: center;">
+        <a href="app.html" style="display: inline-block; background: white; color: var(--green-dark); padding: 16px 36px; border-radius: 10px; font-size: 18px; font-weight: 700; text-decoration: none;">Try the free tool →</a>
+        <p class="micro" style="margin-top: 14px; color: rgba(255,255,255,0.75);">Free on-screen plan · Optional A$14 PDF · Nothing stored</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p><strong>MoneyMoves AU</strong> · Built for Australians, by people who hate jargon</p>
+    <p style="margin-top: 12px;">© 2026 MoneyMoves AU · <a href="privacy.html" style="color: var(--ink-soft);">Privacy</a> · <a href="terms.html" style="color: var(--ink-soft);">Terms</a></p>
+    <p class="disclaimer" style="margin-top: 18px;">
+      <strong>Important:</strong> MoneyMoves AU provides general information and educational tools only. It is not personal financial product advice and does not take into account your objectives, financial situation, or needs. Before acting on any output, consider whether it is appropriate for you and consider speaking to a licensed Australian financial adviser. Past performance is not indicative of future results.
+    </p>
+  </div>
+</footer>
+
+<script>
+  // FAQ accordion
+  document.querySelectorAll('.faq-item').forEach(item => {
+    item.querySelector('.faq-q').addEventListener('click', () => item.classList.toggle('open'));
+  });
+
+  // Visitor counter
+  function initVisitorCounter() {
+    const el = document.getElementById('visitor-count');
+    if (DEMO_MODE) {
+      el.textContent = (1847).toLocaleString('en-AU');
+      return;
+    }
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const ref = firebase.database().ref('visitors');
+    // Increment on every page load
+    ref.transaction(v => (v || 0) + 1);
+    // Display live count
+    ref.on('value', snap => {
+      const n = snap.val() || 0;
+      el.textContent = n.toLocaleString('en-AU');
+    });
+  }
+  initVisitorCounter();
+
+  // Mock form handler — replace action with Mailchimp / ConvertKit / Formspree URL when live
+  function handleForm(formId, successId, emailId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById(emailId).value.trim();
+      if (!email || !email.includes('@')) {
+        alert('Pop in a valid email so we can let you know.');
+        return;
+      }
+      // TODO: POST to your real email service here.
+      // Example: fetch('https://formspree.io/f/YOUR_ID', { method: 'POST', body: new FormData(form) })
+      console.log('Captured email:', email);
+      form.querySelector('.form-row').style.display = 'none';
+      form.querySelector('.micro').style.display = 'none';
+      document.getElementById(successId).style.display = 'block';
+    });
+  }
+  handleForm('signup-form', 'success-1', 'email-1');
+  handleForm('signup-form-2', 'success-2', 'email-2');
+</script>
+
+</body>
+</html>
