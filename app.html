@@ -23,8 +23,8 @@
   const SITE_URL = 'https://moneymoves.com.au';
 </script>
 
-<!-- PayPal JS SDK (sandbox — swap client-id for live ID before going live) -->
-<script src="https://www.paypal.com/sdk/js?client-id=AcJTaBFXoVRsk2ls2zjZ2t7hnIlFWDl3t1yQfU1t9tg1FJo3Bwcdl1ZcFJymPVjHkVxb2mofwYoxMGSJ&currency=AUD&intent=capture"></script>
+<!-- PayPal JS SDK — deferred so it never blocks page JS -->
+<script defer src="https://www.paypal.com/sdk/js?client-id=AcJTaBFXoVRsk2ls2zjZ2t7hnIlFWDl3t1yQfU1t9tg1FJo3Bwcdl1ZcFJymPVjHkVxb2mofwYoxMGSJ&currency=AUD&intent=capture"></script>
 
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
