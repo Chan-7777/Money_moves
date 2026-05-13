@@ -139,7 +139,38 @@
   .btn-vote.unvoted { background: var(--green); color: white; }
   .btn-vote.unvoted:hover { background: var(--green-dark); }
   .btn-vote.voted { background: var(--green-soft); color: var(--green-dark); cursor: default; }
+  .btn-vote.locked { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
   .btn-vote:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Email gate */
+  .email-gate {
+    background: white; border: 1px solid var(--line); border-radius: 14px;
+    padding: 24px 28px; margin-bottom: 32px; margin-top: 8px;
+  }
+  .email-gate h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .email-gate p { font-size: 14px; color: var(--ink-soft); margin-bottom: 16px; }
+  .email-gate-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .email-gate input[type="email"] {
+    flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid var(--line);
+    border-radius: 8px; font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color .15s;
+  }
+  .email-gate input[type="email"]:focus { border-color: var(--green); }
+  .email-gate-btn {
+    padding: 10px 20px; background: var(--green); color: white; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; font-family: inherit;
+    cursor: pointer; white-space: nowrap; transition: background .15s;
+  }
+  .email-gate-btn:hover { background: var(--green-dark); }
+  .email-gate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .gate-msg { font-size: 13px; margin-top: 10px; }
+  .gate-msg.ok { color: var(--green-dark); }
+  .gate-msg.err { color: var(--red); }
+  .gate-confirmed {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--green-soft); border: 1px solid #c3d9cb; border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; color: var(--green-dark); font-weight: 600;
+  }
 
   footer { padding: 40px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); margin-top: 64px; }
 </style>
@@ -167,6 +198,18 @@
 
 <main class="container">
   <div id="demo-banner" class="demo-banner" style="display:none;"></div>
+
+  <!-- Email gate -->
+  <div class="email-gate" id="email-gate">
+    <h3>Enter your email to vote</h3>
+    <p>One vote per email address. Pick the feature that would help you most.</p>
+    <div class="email-gate-row">
+      <input type="email" id="gate-email" placeholder="you@example.com" autocomplete="email" />
+      <button class="email-gate-btn" id="gate-btn" onclick="submitEmail()">Unlock vote →</button>
+    </div>
+    <div class="gate-msg" id="gate-msg"></div>
+  </div>
+
   <div class="features-grid" id="features-grid">
     <!-- Cards injected by JS -->
   </div>
@@ -176,76 +219,59 @@
   <div class="container">
     MoneyMoves AU · <a href="index.html" style="color:inherit;">Home</a> · <a href="app.html" style="color:inherit;">Try the tool</a>
     <br/><br/>
-    Your vote is anonymous. One vote per browser. Feature order updates live as votes come in.
+    One vote per email address. Feature order updates live as votes come in.
   </div>
 </footer>
 
 <script>
 /* ── Feature definitions ──────────────────────────────────── */
 const FEATURES = [
-  {
-    id: 'super',
-    icon: '📊',
-    title: 'Super & retirement planner',
-    desc: 'Model your superannuation balance at retirement, salary sacrifice impact, and whether you\'re on track for the ASFA comfortable standard.',
-  },
-  {
-    id: 'firsthome',
-    icon: '🏠',
-    title: 'First home buyer guide',
-    desc: 'FHSS calculator, stamp duty by state, LVR vs LMI tradeoff, and a personalised deposit timeline based on your savings rate.',
-  },
-  {
-    id: 'investments',
-    icon: '💹',
-    title: 'Investment starter',
-    desc: 'ETF vs managed fund vs direct shares vs extra super — ranked by after-tax expected return for your income bracket.',
-  },
-  {
-    id: 'taxreturn',
-    icon: '🧾',
-    title: 'Tax return estimator',
-    desc: 'Rough ATO refund or bill estimate based on income, deductions, and PAYG withheld. Work from home, vehicle, and WFH deductions included.',
-  },
-  {
-    id: 'budgettracker',
-    icon: '📅',
-    title: 'Fortnightly budget tracker',
-    desc: 'Ongoing spending vs budget with fortnightly cadence, category breakdown, and alerts when you\'re trending over on non-essential categories.',
-  },
-  {
-    id: 'mortgagevsrent',
-    icon: '🏦',
-    title: 'Mortgage vs rent calculator',
-    desc: 'Should I buy now or keep renting? Models total cost of each path over 5, 10, and 20 years including stamp duty, rates, and opportunity cost.',
-  },
+  { id: 'super',         icon: '📊', title: 'Super & retirement planner',   desc: 'Model your superannuation balance at retirement, salary sacrifice impact, and whether you\'re on track for the ASFA comfortable standard.' },
+  { id: 'firsthome',     icon: '🏠', title: 'First home buyer guide',        desc: 'FHSS calculator, stamp duty by state, LVR vs LMI tradeoff, and a personalised deposit timeline based on your savings rate.' },
+  { id: 'investments',   icon: '💹', title: 'Investment starter',            desc: 'ETF vs managed fund vs direct shares vs extra super — ranked by after-tax expected return for your income bracket.' },
+  { id: 'taxreturn',     icon: '🧾', title: 'Tax return estimator',          desc: 'Rough ATO refund or bill estimate based on income, deductions, and PAYG withheld. Work from home, vehicle, and WFH deductions included.' },
+  { id: 'budgettracker', icon: '📅', title: 'Fortnightly budget tracker',    desc: 'Ongoing spending vs budget with fortnightly cadence, category breakdown, and alerts when you\'re trending over on non-essential categories.' },
+  { id: 'mortgagevsrent',icon: '🏦', title: 'Mortgage vs rent calculator',   desc: 'Should I buy now or keep renting? Models total cost of each path over 5, 10, and 20 years including stamp duty, rates, and opportunity cost.' },
 ];
 
 /* ── State ─────────────────────────────────────────────────── */
-const LS_VOTED_KEY = 'moneymoves_voted_features';
-const votedFeatures = new Set(JSON.parse(localStorage.getItem(LS_VOTED_KEY) || '[]'));
-let liveCounts = {};  // { featureId: voteCount }
+const LS_EMAIL_KEY  = 'moneymoves_vote_email';
+const LS_VOTED_KEY  = 'moneymoves_voted_feature'; // single featureId or null
+let liveCounts      = {};
+let userEmail       = localStorage.getItem(LS_EMAIL_KEY) || null;
+let myVote          = localStorage.getItem(LS_VOTED_KEY) || null; // featureId the user picked
+let voteUnlocked    = false; // true once email is confirmed as new
 
-function saveVotedFeatures() {
-  localStorage.setItem(LS_VOTED_KEY, JSON.stringify([...votedFeatures]));
+function emailToKey(email) {
+  return email.toLowerCase().trim().replace(/[.#$[\]/]/g, '_');
 }
 
 /* ── Render ────────────────────────────────────────────────── */
 function renderCards() {
-  const grid = document.getElementById('features-grid');
+  const grid   = document.getElementById('features-grid');
   const sorted = [...FEATURES].sort((a, b) => (liveCounts[b.id] || 0) - (liveCounts[a.id] || 0));
-  const maxVotes = Math.max(1, ...sorted.map(f => liveCounts[f.id] || 0));
+  const maxVotes   = Math.max(1, ...sorted.map(f => liveCounts[f.id] || 0));
   const totalVotes = sorted.reduce((s, f) => s + (liveCounts[f.id] || 0), 0);
 
   document.getElementById('total-votes').textContent = totalVotes.toLocaleString('en-AU');
 
   grid.innerHTML = sorted.map((f, idx) => {
-    const votes = liveCounts[f.id] || 0;
-    const pct = Math.round((votes / maxVotes) * 100);
-    const hasVoted = votedFeatures.has(f.id);
+    const votes     = liveCounts[f.id] || 0;
+    const pct       = Math.round((votes / maxVotes) * 100);
+    const isMyVote  = myVote === f.id;
+    const hasVotedAnywhere = !!myVote;
     const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other';
     const rankLabel = idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`;
-    const cardClass = hasVoted ? 'feature-card voted' : idx === 0 ? 'feature-card top-ranked' : 'feature-card';
+    const cardClass = isMyVote ? 'feature-card voted' : idx === 0 ? 'feature-card top-ranked' : 'feature-card';
+
+    let btnClass, btnText, btnDisabled;
+    if (isMyVote) {
+      btnClass = 'btn-vote voted'; btnText = '✓ Voted'; btnDisabled = true;
+    } else if (hasVotedAnywhere || !voteUnlocked) {
+      btnClass = 'btn-vote locked'; btnText = 'Vote'; btnDisabled = true;
+    } else {
+      btnClass = 'btn-vote unvoted'; btnText = 'Vote'; btnDisabled = false;
+    }
 
     return `
       <div class="${cardClass}" data-id="${f.id}">
@@ -256,10 +282,8 @@ function renderCards() {
         <div class="vote-bar-wrap"><div class="vote-bar" style="width:${pct}%"></div></div>
         <div class="feature-footer">
           <div class="vote-count"><strong>${votes.toLocaleString('en-AU')}</strong> vote${votes !== 1 ? 's' : ''}</div>
-          <button class="btn-vote ${hasVoted ? 'voted' : 'unvoted'}"
-            onclick="castVote('${f.id}')"
-            ${hasVoted ? 'disabled' : ''}>
-            ${hasVoted ? '✓ Voted' : 'Vote'}
+          <button class="${btnClass}" onclick="castVote('${f.id}')" ${btnDisabled ? 'disabled' : ''}>
+            ${btnText}
           </button>
         </div>
       </div>
@@ -267,25 +291,96 @@ function renderCards() {
   }).join('');
 }
 
-/* ── Vote ──────────────────────────────────────────────────── */
-function castVote(featureId) {
-  if (votedFeatures.has(featureId)) return;
-  votedFeatures.add(featureId);
-  saveVotedFeatures();
-  liveCounts[featureId] = (liveCounts[featureId] || 0) + 1;
+/* ── Email gate ────────────────────────────────────────────── */
+async function submitEmail() {
+  const input = document.getElementById('gate-email');
+  const btn   = document.getElementById('gate-btn');
+  const msg   = document.getElementById('gate-msg');
+  const email = input.value.trim().toLowerCase();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msg.className = 'gate-msg err';
+    msg.textContent = 'Please enter a valid email address.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  msg.textContent = '';
+
+  if (DEMO_MODE) {
+    unlockVote(email);
+    return;
+  }
+
+  const db  = firebase.database();
+  const key = emailToKey(email);
+  const snap = await db.ref(`votes/${key}`).get();
+
+  if (snap.exists()) {
+    const prevFeatureId = snap.val().featureId;
+    myVote = prevFeatureId;
+    localStorage.setItem(LS_EMAIL_KEY,  email);
+    localStorage.setItem(LS_VOTED_KEY,  prevFeatureId);
+    showGateConfirmed(email, prevFeatureId);
+  } else {
+    unlockVote(email);
+  }
+}
+
+function unlockVote(email) {
+  userEmail    = email;
+  voteUnlocked = true;
+  localStorage.setItem(LS_EMAIL_KEY, email);
+
+  const gate = document.getElementById('email-gate');
+  gate.innerHTML = `
+    <div class="gate-confirmed">
+      ✅ <span>Voting as <strong>${email}</strong> — pick one feature below.</span>
+    </div>
+  `;
   renderCards();
+}
+
+function showGateConfirmed(email, featureId) {
+  const feature = FEATURES.find(f => f.id === featureId);
+  const title   = feature ? feature.title : featureId;
+  const gate    = document.getElementById('email-gate');
+  gate.innerHTML = `
+    <div class="gate-confirmed">
+      ✅ <span>You already voted for <strong>${title}</strong> — thanks!</span>
+    </div>
+  `;
+  renderCards();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement?.id === 'gate-email') submitEmail();
+});
+
+/* ── Cast vote ─────────────────────────────────────────────── */
+function castVote(featureId) {
+  if (!voteUnlocked || myVote) return;
+
+  myVote = featureId;
+  localStorage.setItem(LS_VOTED_KEY, featureId);
+  liveCounts[featureId] = (liveCounts[featureId] || 0) + 1;
+  voteUnlocked = false;
+  renderCards();
+  showGateConfirmed(userEmail, featureId);
 
   if (!DEMO_MODE) {
-    const db = firebase.database();
+    const db  = firebase.database();
+    const key = emailToKey(userEmail);
+    db.ref(`votes/${key}`).set({ featureId, votedAt: Date.now() });
     db.ref(`features/${featureId}/votes`).transaction(v => (v || 0) + 1);
   }
 }
 
-/* ── Firebase ──────────────────────────────────────────────── */
+/* ── Firebase init ─────────────────────────────────────────── */
 function initFirebase() {
   if (DEMO_MODE) {
     document.getElementById('demo-banner').style.display = 'block';
-    // Seed plausible demo counts so the page isn't empty
     liveCounts = { super: 87, firsthome: 142, investments: 63, taxreturn: 109, budgettracker: 54, mortgagevsrent: 78 };
     renderCards();
     return;
@@ -294,14 +389,26 @@ function initFirebase() {
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.database();
 
-  // Listen for live vote updates
   db.ref('features').on('value', snap => {
     const data = snap.val() || {};
-    FEATURES.forEach(f => {
-      liveCounts[f.id] = data[f.id] ? data[f.id].votes || 0 : 0;
-    });
+    FEATURES.forEach(f => { liveCounts[f.id] = data[f.id]?.votes || 0; });
     renderCards();
   });
+
+  // Restore returning user state from localStorage
+  if (userEmail && myVote) {
+    showGateConfirmed(userEmail, myVote);
+  } else if (userEmail) {
+    // Email known but no local vote record — re-check Firebase
+    const key = emailToKey(userEmail);
+    db.ref(`votes/${key}`).get().then(snap => {
+      if (snap.exists()) {
+        myVote = snap.val().featureId;
+        localStorage.setItem(LS_VOTED_KEY, myVote);
+        showGateConfirmed(userEmail, myVote);
+      }
+    });
+  }
 }
 
 initFirebase();
