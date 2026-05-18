@@ -25,6 +25,7 @@
 -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script>
   // ── REPLACE THESE WITH YOUR FIREBASE PROJECT VALUES ──────────────────────
   const FIREBASE_CONFIG = {
@@ -173,6 +174,29 @@
   }
 
   footer { padding: 40px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); margin-top: 64px; }
+
+  /* ── Google Auth ── */
+  .auth-gate {
+    background: white; border: 1px solid var(--line); border-radius: 14px;
+    padding: 28px; margin-bottom: 32px; margin-top: 8px; text-align: center;
+  }
+  .auth-gate h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .auth-gate p { font-size: 14px; color: var(--ink-soft); margin-bottom: 20px; }
+  .google-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 11px 22px; border-radius: 10px;
+    background: white; border: 1px solid #dadce0;
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: var(--ink);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transition: box-shadow .15s, border-color .15s;
+  }
+  .google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); border-color: #bbb; }
+  .signout-btn {
+    margin-left: auto; font-size: 12px; color: var(--ink-soft);
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    text-decoration: underline; padding: 0; flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -199,16 +223,7 @@
 <main class="container">
   <div id="demo-banner" class="demo-banner" style="display:none;"></div>
 
-  <!-- Email gate -->
-  <div class="email-gate" id="email-gate">
-    <h3>Enter your email to vote</h3>
-    <p>One vote per email address. Pick the feature that would help you most.</p>
-    <div class="email-gate-row">
-      <input type="email" id="gate-email" placeholder="you@example.com" autocomplete="email" />
-      <button class="email-gate-btn" id="gate-btn" onclick="submitEmail()">Unlock vote →</button>
-    </div>
-    <div class="gate-msg" id="gate-msg"></div>
-  </div>
+  <div id="auth-section"></div>
 
   <div class="features-grid" id="features-grid">
     <!-- Cards injected by JS -->
@@ -224,7 +239,6 @@
 </footer>
 
 <script>
-/* ── Feature definitions ──────────────────────────────────── */
 const FEATURES = [
   { id: 'super',         icon: '📊', title: 'Super & retirement planner',   desc: 'Model your superannuation balance at retirement, salary sacrifice impact, and whether you\'re on track for the ASFA comfortable standard.' },
   { id: 'firsthome',     icon: '🏠', title: 'First home buyer guide',        desc: 'FHSS calculator, stamp duty by state, LVR vs LMI tradeoff, and a personalised deposit timeline based on your savings rate.' },
@@ -235,22 +249,42 @@ const FEATURES = [
   { id: 'frutigeraero',  icon: '🌊', title: 'Frutiger Aero design refresh',  desc: 'A full visual redesign using the Frutiger Aero aesthetic — sky gradients, frosted glass cards, glossy aqua buttons, and soft glowing orbs. Vote yes if you\'d love a bold new look for MoneyMoves AU.' },
 ];
 
-/* ── State ─────────────────────────────────────────────────── */
-const LS_EMAIL_KEY  = 'moneymoves_vote_email';
-const LS_VOTED_KEY  = 'moneymoves_voted_feature'; // single featureId or null
-let liveCounts      = {};
-let userEmail       = localStorage.getItem(LS_EMAIL_KEY) || null;
-let myVote          = localStorage.getItem(LS_VOTED_KEY) || null; // featureId the user picked
-let voteUnlocked    = false; // true once email is confirmed as new
+const LS_VOTED_KEY = 'moneymoves_voted_feature';
+let liveCounts  = {};
+let currentUser = null;
+let myVote      = null;
 
-function emailToKey(email) {
-  return email.toLowerCase().trim().replace(/[.#$[\]/]/g, '_');
+const GOOGLE_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>`;
+
+function signInWithGoogle() {
+  firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+}
+function signOut() { firebase.auth().signOut(); }
+
+function showAuthGate() {
+  document.getElementById('auth-section').innerHTML = `
+    <div class="auth-gate">
+      <h3>Sign in to vote</h3>
+      <p>One vote per Google account. Pick the feature that would help you most.</p>
+      <button class="google-btn" onclick="signInWithGoogle()">${GOOGLE_SVG} Continue with Google</button>
+    </div>`;
 }
 
-/* ── Render ────────────────────────────────────────────────── */
+function showAuthBar(user) {
+  const feature = FEATURES.find(f => f.id === myVote);
+  const label   = myVote
+    ? `You voted for <strong>${feature ? feature.title : myVote}</strong> — thanks!`
+    : `Voting as <strong>${user.email}</strong> — pick one feature below.`;
+  document.getElementById('auth-section').innerHTML = `
+    <div class="gate-confirmed">
+      ✅ <span>${label}</span>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>`;
+}
+
 function renderCards() {
-  const grid   = document.getElementById('features-grid');
-  const sorted = [...FEATURES].sort((a, b) => (liveCounts[b.id] || 0) - (liveCounts[a.id] || 0));
+  const grid       = document.getElementById('features-grid');
+  const sorted     = [...FEATURES].sort((a, b) => (liveCounts[b.id] || 0) - (liveCounts[a.id] || 0));
   const maxVotes   = Math.max(1, ...sorted.map(f => liveCounts[f.id] || 0));
   const totalVotes = sorted.reduce((s, f) => s + (liveCounts[f.id] || 0), 0);
 
@@ -260,19 +294,15 @@ function renderCards() {
     const votes     = liveCounts[f.id] || 0;
     const pct       = Math.round((votes / maxVotes) * 100);
     const isMyVote  = myVote === f.id;
-    const hasVotedAnywhere = !!myVote;
     const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other';
     const rankLabel = idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`;
     const cardClass = isMyVote ? 'feature-card voted' : idx === 0 ? 'feature-card top-ranked' : 'feature-card';
 
     let btnClass, btnText, btnDisabled;
-    if (isMyVote) {
-      btnClass = 'btn-vote voted'; btnText = '✓ Voted'; btnDisabled = true;
-    } else if (hasVotedAnywhere || !voteUnlocked) {
-      btnClass = 'btn-vote locked'; btnText = 'Vote'; btnDisabled = true;
-    } else {
-      btnClass = 'btn-vote unvoted'; btnText = 'Vote'; btnDisabled = false;
-    }
+    if (!currentUser)      { btnClass = 'btn-vote locked';  btnText = 'Sign in to vote'; btnDisabled = true; }
+    else if (isMyVote)     { btnClass = 'btn-vote voted';   btnText = '✓ Voted';         btnDisabled = true; }
+    else if (myVote)       { btnClass = 'btn-vote locked';  btnText = 'Vote';            btnDisabled = true; }
+    else                   { btnClass = 'btn-vote unvoted'; btnText = 'Vote';            btnDisabled = false; }
 
     return `
       <div class="${cardClass}" data-id="${f.id}">
@@ -283,136 +313,54 @@ function renderCards() {
         <div class="vote-bar-wrap"><div class="vote-bar" style="width:${pct}%"></div></div>
         <div class="feature-footer">
           <div class="vote-count"><strong>${votes.toLocaleString('en-AU')}</strong> vote${votes !== 1 ? 's' : ''}</div>
-          <button class="${btnClass}" onclick="castVote('${f.id}')" ${btnDisabled ? 'disabled' : ''}>
-            ${btnText}
-          </button>
+          <button class="${btnClass}" onclick="castVote('${f.id}')" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
-/* ── Email gate ────────────────────────────────────────────── */
-async function submitEmail() {
-  const input = document.getElementById('gate-email');
-  const btn   = document.getElementById('gate-btn');
-  const msg   = document.getElementById('gate-msg');
-  const email = input.value.trim().toLowerCase();
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    msg.className = 'gate-msg err';
-    msg.textContent = 'Please enter a valid email address.';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Checking…';
-  msg.textContent = '';
-
-  if (DEMO_MODE) {
-    unlockVote(email);
-    return;
-  }
-
-  const db  = firebase.database();
-  const key = emailToKey(email);
-  const snap = await db.ref(`votes/${key}`).get();
-
-  if (snap.exists()) {
-    const prevFeatureId = snap.val().featureId;
-    myVote = prevFeatureId;
-    localStorage.setItem(LS_EMAIL_KEY,  email);
-    localStorage.setItem(LS_VOTED_KEY,  prevFeatureId);
-    showGateConfirmed(email, prevFeatureId);
-  } else {
-    unlockVote(email);
-  }
-}
-
-function unlockVote(email) {
-  userEmail    = email;
-  voteUnlocked = true;
-  localStorage.setItem(LS_EMAIL_KEY, email);
-
-  const gate = document.getElementById('email-gate');
-  gate.innerHTML = `
-    <div class="gate-confirmed">
-      ✅ <span>Voting as <strong>${email}</strong> — pick one feature below.</span>
-    </div>
-  `;
-  renderCards();
-}
-
-function showGateConfirmed(email, featureId) {
-  const feature = FEATURES.find(f => f.id === featureId);
-  const title   = feature ? feature.title : featureId;
-  const gate    = document.getElementById('email-gate');
-  gate.innerHTML = `
-    <div class="gate-confirmed">
-      ✅ <span>You already voted for <strong>${title}</strong> — thanks!</span>
-    </div>
-  `;
-  renderCards();
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.activeElement?.id === 'gate-email') submitEmail();
-});
-
-/* ── Cast vote ─────────────────────────────────────────────── */
 function castVote(featureId) {
-  if (!voteUnlocked || myVote) return;
-
+  if (!currentUser || myVote) return;
   myVote = featureId;
   localStorage.setItem(LS_VOTED_KEY, featureId);
   liveCounts[featureId] = (liveCounts[featureId] || 0) + 1;
-  voteUnlocked = false;
   renderCards();
-  showGateConfirmed(userEmail, featureId);
-
+  showAuthBar(currentUser);
   if (!DEMO_MODE) {
-    const db  = firebase.database();
-    const key = emailToKey(userEmail);
-    db.ref(`votes/${key}`).set({ featureId, votedAt: Date.now() });
+    const db = firebase.database();
+    db.ref(`votes/${currentUser.uid}`).set({ featureId, votedAt: Date.now(), email: currentUser.email });
     db.ref(`features/${featureId}/votes`).transaction(v => (v || 0) + 1);
   }
 }
 
-/* ── Firebase init ─────────────────────────────────────────── */
-function initFirebase() {
+(function init() {
   if (DEMO_MODE) {
     document.getElementById('demo-banner').style.display = 'block';
-    liveCounts = { super: 87, firsthome: 142, investments: 63, taxreturn: 109, budgettracker: 54, mortgagevsrent: 78 };
+    liveCounts = { super: 87, firsthome: 142, investments: 63, taxreturn: 109, budgettracker: 54, mortgagevsrent: 78, frutigeraero: 23 };
+    showAuthGate();
     renderCards();
     return;
   }
 
   firebase.initializeApp(FIREBASE_CONFIG);
-  const db = firebase.database();
 
-  db.ref('features').on('value', snap => {
+  firebase.database().ref('features').on('value', snap => {
     const data = snap.val() || {};
     FEATURES.forEach(f => { liveCounts[f.id] = data[f.id]?.votes || 0; });
     renderCards();
   });
 
-  // Restore returning user state from localStorage
-  if (userEmail && myVote) {
-    showGateConfirmed(userEmail, myVote);
-  } else if (userEmail) {
-    // Email known but no local vote record — re-check Firebase
-    const key = emailToKey(userEmail);
-    db.ref(`votes/${key}`).get().then(snap => {
-      if (snap.exists()) {
-        myVote = snap.val().featureId;
-        localStorage.setItem(LS_VOTED_KEY, myVote);
-        showGateConfirmed(userEmail, myVote);
-      }
+  firebase.auth().onAuthStateChanged(user => {
+    currentUser = user;
+    if (!user) { myVote = null; showAuthGate(); renderCards(); return; }
+    firebase.database().ref(`votes/${user.uid}`).get().then(snap => {
+      myVote = snap.exists() ? snap.val().featureId : (localStorage.getItem(LS_VOTED_KEY) || null);
+      if (myVote) localStorage.setItem(LS_VOTED_KEY, myVote);
+      showAuthBar(user);
+      renderCards();
     });
-  }
-}
-
-initFirebase();
+  });
+})();
 </script>
 
 </body>

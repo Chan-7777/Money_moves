@@ -29,6 +29,7 @@
 <!-- Firebase — beta counter (same project as index.html) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script>
   const FIREBASE_CONFIG_APP = {
     apiKey:            "AIzaSyDAP8vdCkcdATOt69ntxg1iINPtdNShjMk",
@@ -449,9 +450,49 @@
     margin-top: 8px; font-size: 11px; font-weight: 700;
     color: var(--ink); letter-spacing: .5px; line-height: 1.3;
   }
+
+  /* ── Auth overlay ── */
+  #auth-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(249,248,246,0.97); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .auth-overlay-card {
+    text-align: center; max-width: 380px; width: 100%;
+    background: white; border: 1px solid var(--line); border-radius: 16px;
+    padding: 36px 32px; box-shadow: 0 4px 24px rgba(13,27,30,0.08);
+  }
+  .auth-overlay-logo { font-weight: 800; font-size: 22px; margin-bottom: 20px; }
+  .auth-overlay-logo span { color: var(--green); }
+  .auth-overlay-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .auth-overlay-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 24px; line-height: 1.5; }
+  .google-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 24px; border-radius: 10px;
+    background: white; border: 1px solid #dadce0;
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: var(--ink);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transition: box-shadow .15s, border-color .15s;
+  }
+  .google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.14); border-color: #bbb; }
+  .auth-overlay-legal { font-size: 12px; color: var(--ink-soft); margin-top: 16px; }
+  .auth-overlay-legal a { color: inherit; }
+  .nav-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .nav-signout { font-size: 12px; color: var(--ink-soft); background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0; }
 </style>
 </head>
 <body>
+
+<div id="auth-overlay">
+  <div class="auth-overlay-card">
+    <div class="auth-overlay-logo">Money<span>Moves</span> AU</div>
+    <div class="auth-overlay-title">Sign in to use the tool</div>
+    <p class="auth-overlay-sub">Free to use — no payment needed. Sign in with Google so we know who's using it.</p>
+    <button class="google-btn" id="auth-google-btn" onclick="signInWithGoogleApp()">Continue with Google</button>
+    <p class="auth-overlay-legal">By signing in you agree to our <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms</a>.</p>
+  </div>
+</div>
 
 <nav>
   <div class="container nav-inner">
@@ -459,6 +500,7 @@
     <div style="display:flex;align-items:center;gap:12px;">
       <a href="vote.html" style="font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-weight:600;transition:border-color .15s,color .15s;" onmouseover="this.style.color='var(--ink)';this.style.borderColor='var(--ink)'" onmouseout="this.style.color='var(--ink-soft)';this.style.borderColor='var(--line)'">🗳 Vote on features</a>
       <a href="#" class="nav-start-over" onclick="resetApp(); return false;">Start over</a>
+      <span class="nav-user" id="nav-user"></span>
     </div>
   </div>
 </nav>
@@ -1574,6 +1616,31 @@ restoreFromLocal();
 
 // Seed one empty debt row
 addDebtRow();
+
+/* ── Google Auth ── */
+const _GOOGLE_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>`;
+document.getElementById('auth-google-btn').innerHTML = _GOOGLE_SVG + ' Continue with Google';
+
+function signInWithGoogleApp() {
+  getFirebaseDb();
+  firebase.app('app').auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+}
+function signOutApp() { firebase.app('app').auth().signOut(); }
+
+(function initAppAuth() {
+  getFirebaseDb();
+  firebase.app('app').auth().onAuthStateChanged(user => {
+    const overlay = document.getElementById('auth-overlay');
+    const navUser = document.getElementById('nav-user');
+    if (user) {
+      overlay.style.display = 'none';
+      navUser.innerHTML = `<span>${user.displayName || user.email}</span><button class="nav-signout" onclick="signOutApp()">Sign out</button>`;
+    } else {
+      overlay.style.display = 'flex';
+      navUser.innerHTML = '';
+    }
+  });
+})();
 </script>
 
 </body>
