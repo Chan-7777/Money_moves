@@ -188,6 +188,15 @@
   .beta-bar-fill { height: 100%; background: var(--green); border-radius: 99px; transition: width .5s ease; }
   #hero-full-state { display: none; }
 
+  .google-cta {
+    display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+    padding: 14px 20px; background: white; border: 1px solid #dadce0;
+    border-radius: 10px; font-size: 16px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: var(--ink); text-decoration: none;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: box-shadow .15s, border-color .15s;
+  }
+  .google-cta:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.14); border-color: #bbb; }
+
   /* Footer */
   footer { padding: 32px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); }
   footer p + p { margin-top: 6px; }
@@ -224,34 +233,31 @@
 
     <div class="form-card" style="max-width: 500px;">
 
-      <!-- Beta open: claim a spot -->
+      <!-- Beta open -->
       <div id="hero-open-state">
         <div class="beta-meta">
           <p class="spots-text"><strong id="hero-spots-num">—</strong> of 50 free PDF spots remaining</p>
           <div class="beta-bar-wrap"><div class="beta-bar-fill" id="hero-bar" style="width:0%"></div></div>
         </div>
-        <form class="form-row" id="signup-form" novalidate>
-          <input type="email" id="email-1" placeholder="your@email.com.au" required />
-          <button type="submit">Reserve my free spot →</button>
-        </form>
-        <p class="micro">Reserve your spot · run the 2-min tool · we'll email your personalised PDF. No spam.</p>
-        <div class="success" id="success-1">✓ Spot reserved — <a href="app.html" style="color:var(--green-dark);font-weight:700;">run the tool now to generate your PDF →</a></div>
+        <a href="app.html" class="google-cta">
+          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
+          Sign in with Google — get your free plan
+        </a>
+        <p class="micro" style="margin-top:12px;">Sign in once · Free plan on screen · Beta users get the PDF free</p>
       </div>
 
-      <!-- Beta full: join waitlist -->
+      <!-- Beta full -->
       <div id="hero-full-state">
         <p style="font-weight:700;font-size:16px;margin-bottom:8px;">🔒 Beta PDF spots are full — 50/50 taken.</p>
-        <p style="font-size:14px;color:var(--ink-soft);margin-bottom:14px;">The free tool is still open — you can run your plan and see results on screen. Join the waitlist to get the PDF when we launch.</p>
-        <form class="form-row" id="waitlist-form-hero" novalidate>
-          <input type="email" id="waitlist-email-hero" placeholder="your@email.com.au" required />
-          <button type="submit" style="background:var(--ink);">Join waitlist</button>
-        </form>
-        <div class="success" id="waitlist-success-hero">✓ You're on the list — we'll email you at launch.</div>
-        <a href="app.html" style="display:inline-block;margin-top:14px;font-size:14px;font-weight:700;color:var(--green-dark);text-decoration:none;">Try the free tool anyway →</a>
+        <p style="font-size:14px;color:var(--ink-soft);margin-bottom:16px;">The free tool is still open — sign in with Google to run your plan on screen.</p>
+        <a href="app.html" class="google-cta">
+          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
+          Sign in with Google — try the free tool
+        </a>
       </div>
 
     </div>
-    <p class="micro" style="margin-top: 14px;"><strong>Free</strong> on-screen plan · Reserve a spot · Run the tool · Get your PDF. No login. Nothing stored.</p>
+    <p class="micro" style="margin-top: 14px;"><strong>Free</strong> on-screen plan · Sign in with Google · Financial data never stored.</p>
   </div>
 </header>
 
@@ -297,7 +303,7 @@
       <div class="step">
         <div class="step-num">1</div>
         <h3>Tell us your numbers</h3>
-        <p>Loan balances, interest rates, emergency savings, and any car you're eyeing. Nothing identifying — no Tax File Number, no login.</p>
+        <p>Loan balances, interest rates, emergency savings, and any car you're eyeing. Nothing identifying — no Tax File Number, no bank login.</p>
       </div>
       <div class="step">
         <div class="step-num">2</div>
@@ -356,7 +362,7 @@
     <div class="faq-item"><div class="faq-q">Is this financial advice?</div><div class="faq-a">No. MoneyMoves AU is a general educational tool. It is not personal financial advice and is not a substitute for a licensed Australian financial adviser. Use the output as a starting point for your own thinking or a conversation with a professional.</div></div>
     <div class="faq-item"><div class="faq-q">Do I need to give you my bank details?</div><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></div>
     <div class="faq-item"><div class="faq-q">Is my information private?</div><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></div>
-    <div class="faq-item"><div class="faq-q">Is the tool live now?</div><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. No waitlist, no login, no bank details required.</div></div>
+    <div class="faq-item"><div class="faq-q">Is the tool live now?</div><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. Sign in with Google, run your plan — no bank details, no financial adviser required.</div></div>
     <div class="faq-item"><div class="faq-q">Why charge for the PDF?</div><div class="faq-a">It keeps the free tool genuinely free, with no ads and no affiliate links pushing you to a particular bank or lender. The PDF is optional and only worth buying if you want the full personalised plan.</div></div>
   </div>
 </section>
@@ -365,7 +371,7 @@
   <div class="container">
     <div class="final-cta">
       <h2>Ready? Get your plan in 2 minutes.</h2>
-      <p style="opacity: 0.9; margin-top: 8px;">Free to use. No login. No bank details. Beta users get the PDF free.</p>
+      <p style="opacity: 0.9; margin-top: 8px;">Free to use. Sign in with Google. No bank details. Beta users get the PDF free.</p>
       <div class="form-card" style="margin: 24px auto 0;">
 
         <!-- Beta open -->
@@ -374,22 +380,20 @@
             <p class="spots-text"><strong id="footer-spots-num">—</strong> of 50 free PDF spots remaining</p>
             <div class="beta-bar-wrap"><div class="beta-bar-fill" id="footer-bar" style="width:0%"></div></div>
           </div>
-          <form class="form-row" id="signup-form-2" novalidate>
-            <input type="email" id="email-2" placeholder="your@email.com.au" required />
-            <button type="submit">Reserve my free spot →</button>
-          </form>
-          <div class="success" id="success-2">✓ Spot reserved — <a href="app.html" style="color:var(--green-dark);font-weight:700;">run the tool now to generate your PDF →</a></div>
-          <p class="micro" style="margin-top: 10px; color: rgba(0,0,0,0.5);">No spam. Unsubscribe any time.</p>
+          <a href="app.html" class="google-cta">
+            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
+            Sign in with Google — get your free plan
+          </a>
+          <p class="micro" style="margin-top: 10px; color: rgba(0,0,0,0.5);">Sign in once · free plan instantly</p>
         </div>
 
         <!-- Beta full -->
         <div id="footer-full-state" style="display:none;">
-          <p style="font-weight:700;font-size:16px;margin-bottom:8px;">🔒 Beta is full — 50/50 spots taken.</p>
-          <form class="form-row" id="waitlist-form-footer" novalidate>
-            <input type="email" id="waitlist-email-footer" placeholder="your@email.com.au" required />
-            <button type="submit" style="background:var(--ink);">Join waitlist</button>
-          </form>
-          <div class="success" id="waitlist-success-footer">✓ You're on the list — we'll email you at launch.</div>
+          <p style="font-weight:700;font-size:16px;margin-bottom:12px;">🔒 Beta PDF spots are full — 50/50 taken.</p>
+          <a href="app.html" class="google-cta">
+            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
+            Sign in with Google — try the free tool
+          </a>
         </div>
 
       </div>
@@ -441,59 +445,6 @@
     const vc = document.getElementById('visitor-count');
     if (vc) vc.textContent = (count + 1243).toLocaleString('en-AU');
   }
-
-  function claimBetaSpot(email, onSuccess) {
-    if (DEMO_MODE) {
-      console.log('[Demo] Beta spot claimed for:', email);
-      onSuccess();
-      return;
-    }
-    const db = firebase.database();
-    // Store email (keyed by encoded address to deduplicate)
-    const safeKey = btoa(email).replace(/[.#$[\]]/g, '_');
-    db.ref('beta/emails/' + safeKey).set({ email, ts: Date.now() });
-    // Increment counter atomically
-    db.ref('beta/count').transaction(v => Math.min(BETA_LIMIT, (v || 0) + 1), () => onSuccess());
-  }
-
-  function saveWaitlist(email, onSuccess) {
-    if (DEMO_MODE) {
-      console.log('[Demo] Waitlist:', email);
-      onSuccess();
-      return;
-    }
-    const safeKey = btoa(email).replace(/[.#$[\]]/g, '_');
-    firebase.database().ref('waitlist/' + safeKey).set({ email, ts: Date.now() }, () => onSuccess());
-  }
-
-  function wireForm(formId, emailId, successId, isBeta) {
-    const form = document.getElementById(formId);
-    if (!form) return;
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const email = document.getElementById(emailId).value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        document.getElementById(emailId).style.borderColor = 'var(--accent)';
-        return;
-      }
-      const btn = form.querySelector('button');
-      btn.disabled = true;
-      btn.textContent = '...';
-      const done = () => {
-        form.style.display = 'none';
-        const micro = form.parentElement.querySelector('.micro');
-        if (micro) micro.style.display = 'none';
-        document.getElementById(successId).style.display = 'block';
-      };
-      if (isBeta) claimBetaSpot(email, done);
-      else        saveWaitlist(email, done);
-    });
-  }
-
-  wireForm('signup-form',        'email-1',              'success-1',              true);
-  wireForm('signup-form-2',      'email-2',              'success-2',              true);
-  wireForm('waitlist-form-hero', 'waitlist-email-hero',  'waitlist-success-hero',  false);
-  wireForm('waitlist-form-footer','waitlist-email-footer','waitlist-success-footer',false);
 
   // Init Firebase + live beta counter
   if (DEMO_MODE) {
