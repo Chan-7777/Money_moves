@@ -1809,6 +1809,7 @@ window.selectTier = function(tier) {
 function initPayPalButton() {
   const container = document.getElementById('paypal-button-container');
   if (!container || typeof paypal === 'undefined') return;
+  container.innerHTML = '';
   paypal.Buttons({
     style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 48 },
     createOrder: async () => {
