@@ -1352,58 +1352,67 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
         <div id="pdf-error" style="display:none;padding:var(--space-3);background:var(--color-danger-soft);border-radius:var(--radius-sm);color:var(--color-danger);margin-top:var(--space-2);">Something went wrong — please try again.</div>
       </div>
 
-      <!-- Beta full: paid PDF — A$14 via PayPal (Grand Slam Offer) -->
+      <!-- Beta full: paid decision pack — 2 Tiers (Core A$39 / Complete A$59) -->
       <div id="pdf-beta-full" style="display:none;">
         <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);background:var(--color-accent);color:var(--color-surface);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-2);">
-          <span>★</span> Complete Decision Pack
+          <span>★</span> Choose Your Decision Pack
         </div>
-        <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">The 12-Month Aussie Cashflow & Debt Blueprint</h3>
+        <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">The Aussie Cashflow & Debt Blueprint</h3>
         <p style="margin-bottom:var(--space-4);color:var(--color-text-muted);font-size:var(--text-sm);">
-          Most Australians overpay by <strong>A$3,000–$8,000</strong> on dealer finance markups and unoptimised interest. Your custom institutional report calculates your exact repayment timeline, dealer vs bank loan balloon traps, and inflation stress tests.
+          Most Australians overpay by <strong>A$3,000–$8,000</strong> on dealer finance markups and unoptimised interest. Choose the decision pack that fits your situation:
         </p>
 
-        <!-- Value Stack -->
-        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);font-size:var(--text-sm);">
-          <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-2);color:var(--color-text);">Everything included in your blueprint today:</div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
-            <span>✓ <strong>7-Section Tailored Strategy Report</strong> (PDF)</span>
-            <span style="text-decoration:line-through;">A$149</span>
+        <!-- 2-Tier Selector Cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4);">
+          <!-- Tier 1: Core -->
+          <div id="tier-card-core" onclick="selectTier('core')" style="cursor:pointer;border:2px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-4);transition:all var(--transition);">
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">Core Plan</div>
+            <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$39</div>
+            <ul style="list-style:none;padding:0;margin:0;font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.6;">
+              <li>✓ 7-Section Strategy Report</li>
+              <li>✓ 12-Month Payoff Roadmap</li>
+              <li>✓ Inflation & Rate Stress-Test</li>
+            </ul>
           </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
-            <span>✓ <strong>Bonus 1:</strong> Car Dealer Negotiation Script & Checklist</span>
-            <span style="text-decoration:line-through;">A$49</span>
+
+          <!-- Tier 2: Complete (Recommended / Best Value) -->
+          <div id="tier-card-complete" onclick="selectTier('complete')" style="cursor:pointer;border:2px solid var(--color-accent);background:var(--color-accent-soft);border-radius:var(--radius-md);padding:var(--space-4);position:relative;transition:all var(--transition);">
+            <div style="position:absolute;top:-10px;right:var(--space-3);background:var(--color-accent);color:var(--color-surface);font-size:var(--text-xs);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:0.05em;">Best Value</div>
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">Complete Pack</div>
+            <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$59</div>
+            <ul style="list-style:none;padding:0;margin:0;font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.6;">
+              <li>✓ Everything in Core Plan</li>
+              <li>✓ <strong>Bonus 1:</strong> Car Dealer Script (A$49)</li>
+              <li>✓ <strong>Bonus 2:</strong> Rate Cut Cheatsheet (A$39)</li>
+              <li>✓ <strong>Bonus 3:</strong> Payday Automation (A$29)</li>
+              <li>✓ <strong>🛡️ 30-Day 100x Guarantee</strong></li>
+            </ul>
           </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
-            <span>✓ <strong>Bonus 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet</span>
-            <span style="text-decoration:line-through;">A$39</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
-            <span>✓ <strong>Bonus 3:</strong> Set-and-Forget Payday Automation Setup</span>
-            <span style="text-decoration:line-through;">A$29</span>
-          </div>
-          <div style="border-top:1px solid var(--color-border);margin-top:var(--space-2);padding-top:var(--space-2);display:flex;justify-content:space-between;font-weight:var(--weight-bold);color:var(--color-text);">
-            <span>Total Combined Value:</span>
-            <span>A$266</span>
-          </div>
+        </div>
+
+        <!-- Selected Tier Summary Box -->
+        <div id="tier-summary-box" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-4);font-size:var(--text-xs);">
+          <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Complete Blueprint + 3 Bonus Toolkits (A$59)</div>
+          <div style="color:var(--color-text-muted);">Includes 7-section custom strategy report + 3 negotiation toolkits (A$266 total value) + 30-Day 100x Guarantee.</div>
         </div>
 
         <!-- Price Anchor Callout -->
         <div style="text-align:center;margin-bottom:var(--space-4);">
           <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);">
-            Today Only: A$14.00
+            Total: <span id="selected-tier-price">A$59.00</span>
           </div>
           <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1);">
-            One-time investment • Instant PDF delivery to your email • 95% off total value
+            One-time investment • Instant PDF delivery to your email
           </div>
         </div>
 
         <div id="paypal-button-container"></div>
-        <div id="pdf-waitlist-success" style="display:none;padding:var(--space-3);background:var(--color-accent-soft);border-radius:var(--radius-sm);color:var(--color-accent-dark);font-weight:var(--weight-semibold);margin-top:var(--space-2);">✓ Payment confirmed — your blueprint and bonuses are on their way.</div>
+        <div id="pdf-waitlist-success" style="display:none;padding:var(--space-3);background:var(--color-accent-soft);border-radius:var(--radius-sm);color:var(--color-accent-dark);font-weight:var(--weight-semibold);margin-top:var(--space-2);">✓ Payment confirmed — your decision pack is on its way.</div>
 
-        <!-- 30-Day Risk Reversal Guarantee -->
-        <div style="margin-top:var(--space-4);padding:var(--space-3);background:var(--color-surface);border:1px solid var(--color-accent);border-left-width:4px;border-radius:var(--radius-sm);font-size:var(--text-xs);color:var(--color-text);">
+        <!-- 30-Day Risk Reversal Guarantee Callout -->
+        <div id="tier-guarantee-note" style="margin-top:var(--space-4);padding:var(--space-3);background:var(--color-surface);border:1px solid var(--color-accent);border-left-width:4px;border-radius:var(--radius-sm);font-size:var(--text-xs);color:var(--color-text);">
           <strong style="color:var(--color-accent-dark);">🛡️ The 30-Day "100x Value" Money-Back Guarantee:</strong>
-          If this custom blueprint doesn't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep the PDF and all 3 bonus toolkits either way.
+          Included with the Complete Blueprint. If your blueprint doesn't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep all guides either way.
         </div>
       </div>
 
@@ -1662,6 +1671,62 @@ async function loadPayPalSdk() {
   return _paypalSdkReady;
 }
 
+let selectedTier = 'complete';
+
+window.selectTier = function(tier) {
+  selectedTier = tier;
+  const coreCard = document.getElementById('tier-card-core');
+  const completeCard = document.getElementById('tier-card-complete');
+  const priceDisplay = document.getElementById('selected-tier-price');
+  const summaryBox = document.getElementById('tier-summary-box');
+  const guaranteeNote = document.getElementById('tier-guarantee-note');
+
+  if (tier === 'core') {
+    if (coreCard) {
+      coreCard.style.border = '2px solid var(--color-accent)';
+      coreCard.style.background = 'var(--color-accent-soft)';
+    }
+    if (completeCard) {
+      completeCard.style.border = '2px solid var(--color-border)';
+      completeCard.style.background = 'var(--color-surface)';
+    }
+    if (priceDisplay) priceDisplay.textContent = 'A$39.00';
+    if (summaryBox) {
+      summaryBox.innerHTML = `
+        <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Core Plan (A$39)</div>
+        <div style="color:var(--color-text-muted);">Includes your personalized 7-section financial strategy report, 12-month payoff roadmap, and rate stress-test.</div>
+      `;
+    }
+    if (guaranteeNote) {
+      guaranteeNote.innerHTML = `
+        <strong style="color:var(--color-accent-dark);">ℹ️ Core Plan Guarantee:</strong> Standard 14-day satisfaction review. Need our car dealer scripts & rate negotiation toolkits? Switch to the <strong>Complete Pack</strong> above to unlock the 30-Day 100x Guarantee.
+      `;
+    }
+  } else {
+    // tier === 'complete'
+    if (coreCard) {
+      coreCard.style.border = '2px solid var(--color-border)';
+      coreCard.style.background = 'var(--color-surface)';
+    }
+    if (completeCard) {
+      completeCard.style.border = '2px solid var(--color-accent)';
+      completeCard.style.background = 'var(--color-accent-soft)';
+    }
+    if (priceDisplay) priceDisplay.textContent = 'A$59.00';
+    if (summaryBox) {
+      summaryBox.innerHTML = `
+        <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Complete Blueprint + 3 Bonus Toolkits (A$59)</div>
+        <div style="color:var(--color-text-muted);">Includes 7-section custom strategy report + 3 negotiation toolkits (A$266 total value) + 30-Day 100x Guarantee.</div>
+      `;
+    }
+    if (guaranteeNote) {
+      guaranteeNote.innerHTML = `
+        <strong style="color:var(--color-accent-dark);">🛡️ The 30-Day "100x Value" Money-Back Guarantee:</strong> Included with the Complete Blueprint. If your blueprint doesn't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep all guides either way.
+      `;
+    }
+  }
+};
+
 function initPayPalButton() {
   const container = document.getElementById('paypal-button-container');
   if (!container || typeof paypal === 'undefined') return;
@@ -1671,7 +1736,7 @@ function initPayPalButton() {
       const resp = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: '14.00', currency: 'AUD', email: state.email }),
+        body: JSON.stringify({ tier: selectedTier, email: state.email }),
       });
       if (!resp.ok) throw new Error('Could not create order');
       return (await resp.json()).orderID;
@@ -1716,7 +1781,7 @@ function initPayPalButton() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'MoneyMoves_AU_12Month_Blueprint.pdf';
+                a.download = selectedTier === 'complete' ? 'MoneyMoves_AU_Complete_Blueprint.pdf' : 'MoneyMoves_AU_Core_Strategy.pdf';
                 a.click();
                 URL.revokeObjectURL(url);
               } catch (err) {

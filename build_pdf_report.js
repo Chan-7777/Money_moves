@@ -792,8 +792,9 @@ function deriveReportData(state) {
 }
 
 // ─── Build doc ───────────────────────────────────────────────────────────────
-function buildReport(state) {
+function buildReport(state, opts = {}) {
   const derived = deriveReportData(state);
+  const includeBonuses = opts.includeBonuses !== false;
   const children = [
     ...buildCover(state, derived),
     ...build12MonthMap(state, derived),
@@ -802,7 +803,7 @@ function buildReport(state) {
     ...buildOwnershipCost(state, derived),
     ...buildStressTest(state, derived),
     ...buildActionChecklist(state, derived),
-    ...buildBonusToolkits(state, derived),
+    ...(includeBonuses ? buildBonusToolkits(state, derived) : []),
   ];
 
   return new Document({
@@ -855,8 +856,8 @@ function buildReport(state) {
   });
 }
 
-async function generateReport(state) {
-  const doc = buildReport(state);
+async function generateReport(state, opts = {}) {
+  const doc = buildReport(state, opts);
   return Packer.toBuffer(doc);
 }
 

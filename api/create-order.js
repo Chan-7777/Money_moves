@@ -42,7 +42,13 @@ module.exports = async function handler(req, res) {
   }
 
   // Price is authoritative on the server — never trust client-supplied amount.
-  const PRICE = '14.00';
+  const TIERS = {
+    core: { price: '39.00', desc: 'MoneyMoves AU — Core Decision Report' },
+    complete: { price: '59.00', desc: 'MoneyMoves AU — 12-Month Cashflow & Debt Blueprint (+ Bonuses)' },
+  };
+  const tierKey = (req.body?.tier === 'core') ? 'core' : 'complete';
+  const selectedTier = TIERS[tierKey];
+  const PRICE = selectedTier.price;
   const CURRENCY = 'AUD';
   const { email } = req.body || {};
 
@@ -63,7 +69,7 @@ module.exports = async function handler(req, res) {
         intent: 'CAPTURE',
         purchase_units: [{
           amount: { currency_code: CURRENCY, value: PRICE },
-          description: 'MoneyMoves AU — Personal Money Plan PDF',
+          description: selectedTier.desc,
         }],
         ...(email && { payer: { email_address: email } }),
       }),

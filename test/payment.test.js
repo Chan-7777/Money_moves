@@ -10,7 +10,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { validateState, validateCapturedAmount, PRICE } = require('../lib/validators');
+const { validateState, validateCapturedAmount, PRICE, PRICE_CORE, PRICE_COMPLETE, VALID_PRICES } = require('../lib/validators');
 
 const CURRENCY = 'AUD';
 
@@ -66,24 +66,38 @@ test('validateState: rejects savings exceeding ceiling', () => {
 
 // ── Price enforcement ─────────────────────────────────────────────────────────
 
-test('server price constant is 14.00 AUD', () => {
-  // Regression guard: this must match what create-order.js sends to PayPal.
-  assert.equal(PRICE, '14.00');
+test('server price constants: 39.00 and 59.00 AUD', () => {
+  // Regression guard: these must match what create-order.js sends to PayPal.
+  assert.equal(PRICE_CORE, '39.00');
+  assert.equal(PRICE_COMPLETE, '59.00');
   assert.equal(CURRENCY, 'AUD');
 });
 
-test('validateCapturedAmount: accepts correct amount', () => {
-  const capture = {
+test('validateCapturedAmount: accepts both 39.00 and 59.00 AUD', () => {
+  const captureCore = {
     status: 'COMPLETED',
-    purchase_units: [{ payments: { captures: [{ amount: { value: '14.00', currency_code: 'AUD' } }] } }],
+    purchase_units: [{ payments: { captures: [{ amount: { value: '39.00', currency_code: 'AUD' } }] } }],
   };
-  assert.equal(validateCapturedAmount(capture), true);
+  const captureComplete = {
+    status: 'COMPLETED',
+    purchase_units: [{ payments: { captures: [{ amount: { value: '59.00', currency_code: 'AUD' } }] } }],
+  };
+  assert.equal(validateCapturedAmount(captureCore), true);
+  assert.equal(validateCapturedAmount(captureComplete), true);
 });
 
 test('validateCapturedAmount: rejects underpriced capture (attack vector)', () => {
   const capture = {
     status: 'COMPLETED',
     purchase_units: [{ payments: { captures: [{ amount: { value: '0.01', currency_code: 'AUD' } }] } }],
+  };
+  assert.equal(validateCapturedAmount(capture), false);
+});
+
+test('validateCapturedAmount: rejects legacy 14.00 AUD', () => {
+  const capture = {
+    status: 'COMPLETED',
+    purchase_units: [{ payments: { captures: [{ amount: { value: '14.00', currency_code: 'AUD' } }] } }],
   };
   assert.equal(validateCapturedAmount(capture), false);
 });
@@ -95,15 +109,12 @@ test('validateCapturedAmount: rejects missing amount data', () => {
 });
 
 test('validateCapturedAmount: rejects different currency same amount', () => {
-  // PayPal sends the currency it captured in — a USD capture for 14.00 is NOT AUD 14.00.
-  // This test documents the expectation; extend if multi-currency is ever added.
+  // PayPal sends the currency it captured in — a USD capture for 59.00 is NOT AUD 59.00.
   const capture = {
     status: 'COMPLETED',
-    purchase_units: [{ payments: { captures: [{ amount: { value: '14.00', currency_code: 'USD' } }] } }],
+    purchase_units: [{ payments: { captures: [{ amount: { value: '59.00', currency_code: 'USD' } }] } }],
   };
-  // Current logic only checks value string, not currency_code — document that.
-  // If we ever add multi-currency, add currency_code check here.
-  assert.equal(validateCapturedAmount(capture), true); // value matches; currency not yet checked
+  assert.equal(validateCapturedAmount(capture), false);
 });
 
 // ── Email validation ──────────────────────────────────────────────────────────

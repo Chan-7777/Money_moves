@@ -152,11 +152,30 @@ async function storeOrderRecord(orderID, record) {
 
 // ── Email delivery ────────────────────────────────────────────────────────────
 
-async function sendEmail(to, pdfBuffer) {
+async function sendEmail(to, pdfBuffer, isComplete = true) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey || resendApiKey.includes('REPLACE_WITH')) {
     throw new Error('Email service is not configured on the server.');
   }
+
+  const subject = isComplete
+    ? 'Your MoneyMoves AU 12-Month Cashflow & Debt Blueprint (+ Bonuses)'
+    : 'Your MoneyMoves AU Core Decision Report';
+
+  const bonusHtml = isComplete
+    ? `<ul>
+  <li><strong>Sections 1–7:</strong> Your personalised 12-month debt elimination roadmap, car purchase scenarios, 5-year running costs, and inflation stress-tests.</li>
+  <li><strong>Bonus Toolkit 1:</strong> Aussie Car Dealer Negotiation Script & Finance Checklist</li>
+  <li><strong>Bonus Toolkit 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet</li>
+  <li><strong>Bonus Toolkit 3:</strong> Set-and-Forget Payday Automation Setup</li>
+</ul>
+<p><strong>Our 30-Day "100x Value" Guarantee:</strong> If this plan does not uncover at least A$1,400 in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply directly to this email within 30 days for a prompt, courteous 100% refund.</p>`
+    : `<p>Your personalized 7-section financial report is attached, featuring your 12-month debt roadmap, car scenarios, and cashflow map.</p>`;
+
+  const filename = isComplete
+    ? 'MoneyMoves_AU_12Month_Blueprint.pdf'
+    : 'MoneyMoves_AU_Core_Report.pdf';
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -166,20 +185,13 @@ async function sendEmail(to, pdfBuffer) {
     body: JSON.stringify({
       from: 'MoneyMoves AU <onboarding@resend.dev>',
       to,
-      subject: 'Your MoneyMoves AU 12-Month Cashflow & Debt Blueprint (+ Bonuses)',
+      subject,
       html: `<p>Hi there,</p>
-<p>Thanks for ordering <strong>The 12-Month Aussie Cashflow & Debt Blueprint</strong>! Your personalised financial decision pack is attached as a PDF.</p>
-<p><strong>What is inside your attached document:</strong></p>
-<ul>
-  <li><strong>Sections 1–7:</strong> Your personalised 12-month debt elimination roadmap, car purchase scenarios, 5-year running costs, and inflation stress-tests.</li>
-  <li><strong>Bonus Toolkit 1:</strong> Aussie Car Dealer Negotiation Script & Finance Checklist</li>
-  <li><strong>Bonus Toolkit 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet</li>
-  <li><strong>Bonus Toolkit 3:</strong> Set-and-Forget Payday Automation Setup</li>
-</ul>
-<p><strong>Our 30-Day "100x Value" Guarantee:</strong> If this plan does not uncover at least A$1,400 in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply directly to this email within 30 days for a prompt, courteous 100% refund.</p>
+<p>Thanks for ordering! Your personalised financial decision pack is attached as a PDF.</p>
+${bonusHtml}
 <p>— The MoneyMoves AU Team</p>`,
       attachments: [{
-        filename: 'MoneyMoves_AU_12Month_Blueprint.pdf',
+        filename,
         content: pdfBuffer.toString('base64'),
       }],
     }),
@@ -259,18 +271,23 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Payment amount mismatch' });
     }
 
+    const capturedAmount = capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
+    const isComplete = capturedAmount === '59.00';
+
     // Store capture record BEFORE expensive ops — so a retry after PDF/email
     // failure returns alreadyCaptured instead of hitting PayPal a second time.
     await storeOrderRecord(orderID, {
       email: state.email || null,
       timestamp: Date.now(),
       captured: true,
+      tier: isComplete ? 'complete' : 'core',
+      amount: capturedAmount,
       emailSent: false,
       emailError: null,
     });
 
     // Generate DOCX → convert to PDF → email
-    const docxBuffer = await generateReport(state);
+    const docxBuffer = await generateReport(state, { includeBonuses: isComplete });
     const pdfBuffer  = await convertToPdf(docxBuffer);
 
     let emailSent = false;
@@ -278,7 +295,7 @@ module.exports = async function handler(req, res) {
 
     if (state.email) {
       try {
-        await sendEmail(state.email, pdfBuffer);
+        await sendEmail(state.email, pdfBuffer, isComplete);
         emailSent = true;
       } catch (err) {
         log('error', '[capture-order] email delivery failed', { orderID, error: err.message });
