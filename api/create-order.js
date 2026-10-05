@@ -1,5 +1,7 @@
 'use strict';
 
+const { log } = require('../lib/logger');
+
 const PAYPAL_BASE = process.env.PAYPAL_ENV === 'live'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
@@ -24,7 +26,29 @@ async function getAccessToken() {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { amount = '14.00', currency = 'AUD', email } = req.body || {};
+  const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+  const paypalSecret = process.env.PAYPAL_SECRET;
+  const convertapiSecret = process.env.CONVERTAPI_SECRET;
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (
+    !paypalClientId || paypalClientId.includes('REPLACE_WITH') ||
+    !paypalSecret || paypalSecret.includes('REPLACE_WITH') ||
+    !convertapiSecret || convertapiSecret.includes('REPLACE_WITH') ||
+    !resendApiKey || resendApiKey.includes('REPLACE_WITH')
+  ) {
+    log('error', '[create-order] Server is not fully configured');
+    return res.status(503).json({ error: 'Server is not fully configured (missing API credentials).' });
+  }
+
+  // Price is authoritative on the server — never trust client-supplied amount.
+  const PRICE = '14.00';
+  const CURRENCY = 'AUD';
+  const { email } = req.body || {};
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
 
   try {
     const token = await getAccessToken();
@@ -38,7 +62,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         intent: 'CAPTURE',
         purchase_units: [{
-          amount: { currency_code: currency, value: amount },
+          amount: { currency_code: CURRENCY, value: PRICE },
           description: 'MoneyMoves AU — Personal Money Plan PDF',
         }],
         ...(email && { payer: { email_address: email } }),
@@ -47,13 +71,13 @@ module.exports = async function handler(req, res) {
 
     const order = await orderRes.json();
     if (!order.id) {
-      console.error('PayPal create-order error:', order);
+      log('error', '[create-order] PayPal order creation failed', { response: JSON.stringify(order) });
       return res.status(500).json({ error: 'Failed to create PayPal order' });
     }
 
     res.json({ orderID: order.id });
   } catch (err) {
-    console.error('create-order exception:', err);
+    log('error', '[create-order] unhandled exception', { error: err.message });
     res.status(500).json({ error: 'Internal error' });
   }
 };

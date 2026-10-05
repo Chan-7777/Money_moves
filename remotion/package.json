@@ -1,0 +1,16 @@
+{
+  "name": "moneymoves-remotion",
+  "version": "1.0.0",
+  "description": "Programmatic video flow for MoneyMoves AU using Remotion",
+  "scripts": {
+    "start": "remotion preview",
+    "build": "remotion render MoneyMovesFlow out/moneymoves_pipeline.mp4",
+    "render-still": "remotion still MoneyMovesFlow out/thumbnail.png"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.260",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.260"
+  }
+}

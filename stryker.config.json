@@ -1,0 +1,12 @@
+{
+  "$schema": "https://stryker-mutator.io/schemas/stryker-core.schema.json",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "node --test test/payment.test.js"
+  },
+  "coverageAnalysis": "off",
+  "mutate": ["lib/validators.js"],
+  "reporters": ["clear-text"],
+  "timeoutMS": 15000,
+  "ignorePatterns": ["node_modules", "test", "design-system"]
+}

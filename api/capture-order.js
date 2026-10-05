@@ -1,6 +1,8 @@
 'use strict';
 
 const { generateReport } = require('../build_pdf_report');
+const { validateState, validateCapturedAmount } = require('../lib/validators');
+const { log } = require('../lib/logger');
 
 const PAYPAL_BASE = process.env.PAYPAL_ENV === 'live'
   ? 'https://api-m.paypal.com'
@@ -49,42 +51,188 @@ async function convertToPdf(docxBuffer) {
   return Buffer.from(data.Files[0].FileData, 'base64');
 }
 
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+const _ipHits  = new Map();
+const RATE_MAX = 5;
+const RATE_WIN = 60_000; // ms
+
+function checkLocalRateLimit(ip) {
+  const now   = Date.now();
+  const entry = _ipHits.get(ip) || { count: 0, start: now };
+  if (now - entry.start > RATE_WIN) {
+    _ipHits.set(ip, { count: 1, start: now });
+    return false;
+  }
+  entry.count += 1;
+  _ipHits.set(ip, entry);
+  return entry.count > RATE_MAX;
+}
+
+async function checkUpstashRateLimit(ip) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    return checkLocalRateLimit(ip);
+  }
+
+  const key = `ratelimit:capture-order:${ip}`;
+  try {
+    const res = await fetch(`${url}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([
+        ['INCR', key],
+        ['EXPIRE', key, '60', 'NX']
+      ]),
+    });
+    if (!res.ok) {
+      log('warn', '[ratelimit] Upstash returned status', { status: res.status });
+      return checkLocalRateLimit(ip);
+    }
+    const results = await res.json();
+    const count = results[0]?.result || 1;
+    return count > RATE_MAX;
+  } catch (err) {
+    log('error', '[ratelimit] Upstash error', { error: err.message });
+    return checkLocalRateLimit(ip);
+  }
+}
+
+// ── Idempotency + purchase record ─────────────────────────────────────────────
+// Prevents double-captures when the same orderID is submitted twice (double-click,
+// network retry). Stores a record in Upstash (30-day TTL) with in-memory fallback.
+
+const _processedOrders = new Map();
+const ORDER_TTL = 2_592_000; // 30 days in seconds
+
+async function checkIdempotency(orderID) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    try {
+      const res = await fetch(`${url}/pipeline`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([['GET', `order:${orderID}`]]),
+      });
+      if (res.ok) {
+        const results = await res.json();
+        const raw = results[0]?.result;
+        if (raw) return JSON.parse(raw);
+      }
+    } catch (err) {
+      log('warn', '[idempotency] Upstash GET failed, falling back to in-memory', { error: err.message });
+    }
+  }
+  return _processedOrders.get(orderID) || null;
+}
+
+async function storeOrderRecord(orderID, record) {
+  _processedOrders.set(orderID, record); // always update in-memory
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    try {
+      await fetch(`${url}/pipeline`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([
+          ['SET', `order:${orderID}`, JSON.stringify(record), 'EX', String(ORDER_TTL)]
+        ]),
+      });
+    } catch (err) {
+      log('warn', '[order-record] Failed to persist to Upstash', { orderID, error: err.message });
+    }
+  }
+}
+
+// ── Email delivery ────────────────────────────────────────────────────────────
+
 async function sendEmail(to, pdfBuffer) {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('[email] RESEND_API_KEY not set — skipping send');
-    return;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey || resendApiKey.includes('REPLACE_WITH')) {
+    throw new Error('Email service is not configured on the server.');
   }
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      Authorization: `Bearer ${resendApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       from: 'MoneyMoves AU <onboarding@resend.dev>',
       to,
-      subject: 'Your MoneyMoves AU Personal Money Plan',
+      subject: 'Your MoneyMoves AU 12-Month Cashflow & Debt Blueprint (+ Bonuses)',
       html: `<p>Hi there,</p>
-<p>Thanks for your purchase! Your personalised money plan PDF is attached.</p>
-<p>Open it in any PDF viewer — Adobe Reader, Preview, or your browser.</p>
-<p>— MoneyMoves AU team</p>`,
+<p>Thanks for ordering <strong>The 12-Month Aussie Cashflow & Debt Blueprint</strong>! Your personalised financial decision pack is attached as a PDF.</p>
+<p><strong>What is inside your attached document:</strong></p>
+<ul>
+  <li><strong>Sections 1–7:</strong> Your personalised 12-month debt elimination roadmap, car purchase scenarios, 5-year running costs, and inflation stress-tests.</li>
+  <li><strong>Bonus Toolkit 1:</strong> Aussie Car Dealer Negotiation Script & Finance Checklist</li>
+  <li><strong>Bonus Toolkit 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet</li>
+  <li><strong>Bonus Toolkit 3:</strong> Set-and-Forget Payday Automation Setup</li>
+</ul>
+<p><strong>Our 30-Day "100x Value" Guarantee:</strong> If this plan does not uncover at least A$1,400 in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply directly to this email within 30 days for a prompt, courteous 100% refund.</p>
+<p>— The MoneyMoves AU Team</p>`,
       attachments: [{
-        filename: 'MoneyMoves_AU_Plan.pdf',
+        filename: 'MoneyMoves_AU_12Month_Blueprint.pdf',
         content: pdfBuffer.toString('base64'),
       }],
     }),
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error('Resend error:', err);
+    throw new Error(`Resend error: ${err}`);
   }
 }
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+  const paypalSecret = process.env.PAYPAL_SECRET;
+  const convertapiSecret = process.env.CONVERTAPI_SECRET;
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (
+    !paypalClientId || paypalClientId.includes('REPLACE_WITH') ||
+    !paypalSecret || paypalSecret.includes('REPLACE_WITH') ||
+    !convertapiSecret || convertapiSecret.includes('REPLACE_WITH') ||
+    !resendApiKey || resendApiKey.includes('REPLACE_WITH')
+  ) {
+    log('error', '[capture-order] Server is not fully configured');
+    return res.status(503).json({ error: 'Server is not fully configured (missing API credentials).' });
+  }
+
+  const ip = ((req.headers['x-forwarded-for'] || '').split(',')[0].trim())
+    || req.socket?.remoteAddress
+    || 'unknown';
+  if (await checkUpstashRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many requests — try again in a minute.' });
+  }
+
   const { orderID, state } = req.body || {};
-  if (!orderID || !state) return res.status(400).json({ error: 'Missing orderID or state' });
+  if (!orderID) return res.status(400).json({ error: 'Missing orderID' });
+
+  // Idempotency guard — return immediately for already-processed orders
+  const existing = await checkIdempotency(orderID);
+  if (existing) {
+    log('info', '[capture-order] duplicate orderID — returning cached result', { orderID });
+    return res.json({ success: true, alreadyCaptured: true, emailSent: existing.emailSent });
+  }
+
+  const stateErr = validateState(state);
+  if (stateErr) return res.status(400).json({ error: stateErr });
+
+  if (state.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) {
+    return res.status(400).json({ error: 'Invalid email in state' });
+  }
 
   try {
     const token = await getAccessToken();
@@ -100,21 +248,61 @@ module.exports = async function handler(req, res) {
     const capture = await captureRes.json();
 
     if (capture.status !== 'COMPLETED') {
-      console.error('PayPal capture not completed:', capture);
+      log('error', '[capture-order] PayPal capture not completed', { orderID, status: capture.status });
       return res.status(400).json({ success: false, error: 'Payment not completed' });
     }
+
+    // Verify the captured amount matches the server-authoritative price.
+    if (!validateCapturedAmount(capture)) {
+      const capturedAmount = capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
+      log('error', '[capture-order] amount mismatch', { orderID, capturedAmount });
+      return res.status(400).json({ success: false, error: 'Payment amount mismatch' });
+    }
+
+    // Store capture record BEFORE expensive ops — so a retry after PDF/email
+    // failure returns alreadyCaptured instead of hitting PayPal a second time.
+    await storeOrderRecord(orderID, {
+      email: state.email || null,
+      timestamp: Date.now(),
+      captured: true,
+      emailSent: false,
+      emailError: null,
+    });
 
     // Generate DOCX → convert to PDF → email
     const docxBuffer = await generateReport(state);
     const pdfBuffer  = await convertToPdf(docxBuffer);
 
+    let emailSent = false;
+    let emailError = null;
+
     if (state.email) {
-      await sendEmail(state.email, pdfBuffer);
+      try {
+        await sendEmail(state.email, pdfBuffer);
+        emailSent = true;
+      } catch (err) {
+        log('error', '[capture-order] email delivery failed', { orderID, error: err.message });
+        emailError = err.message;
+      }
     }
 
-    res.json({ success: true });
+    // Update record with final email outcome
+    await storeOrderRecord(orderID, {
+      email: state.email || null,
+      timestamp: Date.now(),
+      captured: true,
+      emailSent,
+      emailError: emailError || null,
+    });
+
+    res.json({
+      success: true,
+      emailSent,
+      emailError,
+      pdfData: pdfBuffer.toString('base64'),
+    });
   } catch (err) {
-    console.error('capture-order exception:', err);
+    log('error', '[capture-order] unhandled exception', { orderID, error: err.message });
     res.status(500).json({ success: false, error: 'Internal error' });
   }
 };

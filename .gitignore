@@ -4,3 +4,18 @@ node_modules/
 .vercel/
 *.docx
 *.pdf
+
+# Dev build tools and QA artifacts (not production code)
+build_spec.js
+build_test_matrix.py
+convert_report.py
+report_preview.html
+test_screenshots/
+*.xlsx
+.~lock.*
+
+# Playwright / Stryker output
+playwright-report/
+test-results/
+reports/
+.claude/

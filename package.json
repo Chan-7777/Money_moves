@@ -4,13 +4,21 @@
   "description": "MoneyMoves AU — Australian personal finance tool",
   "main": "build_pdf_report.js",
   "scripts": {
-    "report": "node build_pdf_report.js",
-    "dev": "vercel dev"
+    "test": "node --test test/**/*.test.js",
+    "e2e": "playwright test",
+    "mutate": "stryker run",
+    "dead-code": "bash scripts/dead-code-scan.sh",
+    "report": "node build_pdf_report.js"
   },
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
+    "@clerk/backend": "^3.16.12",
     "docx": "^9.6.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@stryker-mutator/core": "^8.6.0"
   }
 }

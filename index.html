@@ -9,6 +9,9 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
 
+<link rel="stylesheet" href="design-system/tokens.css" />
+<link rel="stylesheet" href="design-system/components.css" />
+
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script>
@@ -28,188 +31,182 @@
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --green: #00843d;
-    --green-dark: #006b31;
-    --gold: #ffcd00;
-    --ink: #0d1b1e;
-    --ink-soft: #3a4a4d;
-    --bg: #f7f6f1;
-    --card: #ffffff;
-    --line: #e6e3d8;
-    --accent: #d64545;
-  }
+  /* Design tokens live in design-system/tokens.css */
   html { scroll-behavior: smooth; }
   body {
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
-    color: var(--ink);
-    background: var(--bg);
+    color: var(--color-text);
+    background: var(--color-bg);
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
   }
-  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 var(--space-6); }
 
   /* Nav */
   nav {
-    padding: 18px 0;
-    border-bottom: 1px solid var(--line);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--color-border);
     background: rgba(247,246,241,0.92);
     backdrop-filter: blur(8px);
     position: sticky; top: 0; z-index: 50;
   }
   .nav-inner { display: flex; justify-content: space-between; align-items: center; }
-  .logo { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
-  .logo span { color: var(--green); }
+  .logo { font-weight: 800; font-size: var(--text-lg); letter-spacing: -0.02em; }
+  .logo span { color: var(--color-accent); }
   .nav-cta {
-    background: var(--ink); color: white; padding: 10px 18px; border-radius: 8px;
-    text-decoration: none; font-weight: 600; font-size: 14px;
+    background: var(--color-text); color: white; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm);
+    text-decoration: none; font-weight: 600; font-size: var(--text-base);
   }
-  .nav-cta:hover { background: var(--green); }
+  .nav-cta:hover { background: var(--color-accent); }
 
   /* Hero */
-  .hero { padding: 72px 0 56px; }
+  .hero { padding: var(--space-18) 0 var(--space-14); }
   .pill {
-    display: inline-block; padding: 6px 14px; border-radius: 999px;
-    background: #e8f3ec; color: var(--green-dark); font-weight: 600;
-    font-size: 13px; margin-bottom: 20px; letter-spacing: 0.01em;
+    display: inline-block; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full);
+    background: var(--color-accent-soft); color: var(--color-accent-dark); font-weight: 600;
+    font-size: var(--text-sm); margin-bottom: var(--space-5); letter-spacing: 0.01em;
   }
   h1 {
-    font-size: clamp(34px, 5.5vw, 58px);
+    font-size: var(--text-3xl);
     line-height: 1.05; letter-spacing: -0.025em; font-weight: 800;
-    margin-bottom: 20px; max-width: 14ch;
+    margin-bottom: var(--space-5); max-width: 14ch;
   }
-  h1 em { color: var(--green); font-style: normal; }
+  h1 em { color: var(--color-accent); font-style: normal; }
   .sub {
-    font-size: clamp(17px, 2vw, 20px); color: var(--ink-soft);
-    max-width: 56ch; margin-bottom: 32px;
+    font-size: clamp(17px, 2vw, 20px); color: var(--color-text-muted);
+    max-width: 56ch; margin-bottom: var(--space-8);
   }
 
   .form-card {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 24px; max-width: 520px;
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg); padding: var(--space-6); max-width: 520px;
     box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 8px 24px rgba(13,27,30,0.06);
   }
-  .form-row { display: flex; gap: 8px; }
+  .form-row { display: flex; gap: var(--space-2); }
   .form-card input[type="email"] {
-    flex: 1; padding: 14px 16px; border: 1px solid var(--line);
-    border-radius: 10px; font-size: 16px; font-family: inherit;
-    background: #fafaf6; outline: none;
+    flex: 1; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); font-size: var(--text-md); font-family: inherit;
+    background: var(--color-bg); outline: none;
   }
-  .form-card input[type="email"]:focus { border-color: var(--green); background: white; }
+  .form-card input[type="email"]:focus { border-color: var(--color-accent); background: white; }
   .form-card button {
-    padding: 14px 22px; background: var(--green); color: white;
-    border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+    padding: var(--space-3) var(--space-5); background: var(--color-accent); color: white;
+    border: none; border-radius: var(--radius-md); font-size: var(--text-md); font-weight: 700;
     cursor: pointer; font-family: inherit; white-space: nowrap;
   }
-  .form-card button:hover { background: var(--green-dark); }
-  .micro { font-size: 13px; color: var(--ink-soft); margin-top: 12px; }
-  .micro strong { color: var(--ink); }
-  .success { display: none; padding: 16px; background: #e8f3ec; border-radius: 10px; color: var(--green-dark); font-weight: 600; }
+  .form-card button:hover { background: var(--color-accent-dark); }
+  .micro { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-3); }
+  .micro strong { color: var(--color-text); }
+  .success { display: none; padding: var(--space-4); background: var(--color-accent-soft); border-radius: var(--radius-md); color: var(--color-accent-dark); font-weight: 600; }
 
   /* Trust bar */
-  .trust-bar { padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fdfcf7; }
-  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; text-align: center; }
-  .trust-stat { font-weight: 800; font-size: 22px; color: var(--ink); }
-  .trust-label { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+  .trust-bar { padding: var(--space-6) 0; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); background: var(--color-bg); }
+  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-8); text-align: center; }
+  .trust-stat { font-weight: 800; font-size: var(--text-xl); color: var(--color-text); }
+  .trust-label { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-1); }
 
   /* Sections */
-  section { padding: 72px 0; }
-  .section-head { max-width: 56ch; margin-bottom: 48px; }
-  h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 14px; }
-  .lede { font-size: 18px; color: var(--ink-soft); }
+  section { padding: var(--space-18) 0; }
+  .section-head { max-width: 56ch; margin-bottom: var(--space-12); }
+  h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: var(--space-3); }
+  .lede { font-size: var(--text-lg); color: var(--color-text-muted); }
 
   /* Problem cards */
-  .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .problem-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
-  .problem-q { font-weight: 700; font-size: 17px; margin-bottom: 8px; }
-  .problem-a { color: var(--ink-soft); font-size: 15px; }
+  .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); }
+  .problem-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-6); }
+  .problem-q { font-weight: 700; font-size: var(--text-md); margin-bottom: var(--space-2); }
+  .problem-a { color: var(--color-text-muted); font-size: var(--text-base); }
 
   /* How it works */
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .step { padding: 24px; background: var(--card); border-radius: 12px; border: 1px solid var(--line); }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+  .step { padding: var(--space-6); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-border); }
   .step-num {
-    width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: white;
-    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; margin-bottom: 14px;
+    width: var(--space-8); height: var(--space-8); border-radius: 50%; background: var(--color-text); color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--text-base); margin-bottom: var(--space-3);
   }
-  .step h3 { font-size: 18px; margin-bottom: 6px; }
-  .step p { color: var(--ink-soft); font-size: 15px; }
+  .step h3 { font-size: var(--text-lg); margin-bottom: var(--space-1); }
+  .step p { color: var(--color-text-muted); font-size: var(--text-base); }
 
   /* Pricing */
-  .pricing-wrap { background: var(--card); border-radius: 16px; padding: 40px; border: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
-  .pricing-left h3 { font-size: 26px; margin-bottom: 12px; }
-  .pricing-left p { color: var(--ink-soft); margin-bottom: 16px; }
+  .pricing-wrap { background: var(--color-surface); border-radius: var(--radius-xl); padding: var(--space-10); border: 1px solid var(--color-border); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10); align-items: center; }
+  .pricing-left h3 { font-size: var(--text-xl); margin-bottom: var(--space-3); }
+  .pricing-left p { color: var(--color-text-muted); margin-bottom: var(--space-4); }
   .check-list { list-style: none; }
-  .check-list li { padding: 8px 0; padding-left: 28px; position: relative; color: var(--ink-soft); }
+  .check-list li { padding: var(--space-2) 0; padding-left: 28px; position: relative; color: var(--color-text-muted); }
   .check-list li::before {
-    content: "✓"; position: absolute; left: 0; top: 8px;
-    color: var(--green); font-weight: 800;
+    content: "✓"; position: absolute; left: 0; top: var(--space-2);
+    color: var(--color-accent); font-weight: 800;
   }
   .price-tag {
-    background: linear-gradient(135deg, #fff8e6 0%, #fff 100%);
-    border: 1px solid var(--gold); border-radius: 14px; padding: 28px; text-align: center;
+    background: linear-gradient(135deg, var(--color-warning-soft) 0%, var(--color-surface) 100%);
+    border: 1px solid var(--color-warning); border-radius: var(--radius-lg); padding: var(--space-6); text-align: center;
   }
-  .price { font-size: 48px; font-weight: 800; letter-spacing: -0.02em; }
-  .price-cents { font-size: 22px; vertical-align: top; }
-  .price-sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 20px; }
+  .price { font-size: var(--text-display); font-weight: 800; letter-spacing: -0.02em; }
+  .price-cents { font-size: var(--text-xl); vertical-align: top; }
+  .price-sub { color: var(--color-text-muted); font-size: var(--text-base); margin-bottom: var(--space-5); }
   .price-cta {
-    display: inline-block; background: var(--ink); color: white; padding: 14px 28px;
-    border-radius: 10px; text-decoration: none; font-weight: 700; width: 100%;
+    display: inline-block; background: var(--color-text); color: white; padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-md); text-decoration: none; font-weight: 700; width: 100%;
   }
 
   /* Quote */
-  .quote-section { background: var(--ink); color: #f0eee6; padding: 80px 0; }
+  .quote-section { background: var(--color-text); color: var(--color-bg); padding: var(--space-20) 0; }
   .quote {
     font-size: clamp(22px, 3vw, 30px); line-height: 1.4; max-width: 800px;
     letter-spacing: -0.01em; font-weight: 500;
   }
-  .quote-author { margin-top: 20px; color: #b9b6a8; font-size: 15px; }
+  .quote-author { margin-top: var(--space-5); color: rgba(249,248,246,0.65); font-size: var(--text-base); }
 
   /* FAQ */
-  .faq-item { border-bottom: 1px solid var(--line); padding: 18px 0; }
+  .faq-item { border-bottom: 1px solid var(--color-border); padding: var(--space-4) 0; }
   .faq-q { font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; }
-  .faq-a { color: var(--ink-soft); padding-top: 10px; display: none; font-size: 15px; }
+  .faq-a { color: var(--color-text-muted); padding-top: var(--space-2); display: none; font-size: var(--text-base); }
   .faq-item.open .faq-a { display: block; }
   .faq-item.open .faq-q::after { content: "−"; }
-  .faq-q::after { content: "+"; font-size: 22px; color: var(--ink-soft); }
+  .faq-q::after { content: "+"; font-size: var(--text-xl); color: var(--color-text-muted); }
 
   /* Final CTA */
   .final-cta {
-    background: var(--green); color: white; padding: 60px 40px; border-radius: 16px;
+    background: var(--color-accent); color: white; padding: var(--space-15) var(--space-10); border-radius: var(--radius-xl);
     text-align: center;
   }
   .final-cta h2 { color: white; }
-  .final-cta .form-card { margin: 24px auto 0; }
+  .final-cta .form-card { margin: var(--space-6) auto 0; }
 
   /* Beta counter */
-  .beta-meta { margin-bottom: 14px; }
-  .spots-text { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
-  .spots-text strong { color: var(--ink); }
-  .beta-bar-wrap { height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; }
-  .beta-bar-fill { height: 100%; background: var(--green); border-radius: 99px; transition: width .5s ease; }
+  .beta-meta { margin-bottom: var(--space-3); }
+  .spots-text { font-size: var(--text-base); color: var(--color-text-muted); margin-bottom: var(--space-1); }
+  .spots-text strong { color: var(--color-text); }
+  .beta-bar-wrap { height: 7px; background: var(--color-border); border-radius: var(--radius-full); overflow: hidden; }
+  .beta-bar-fill { height: 100%; background: var(--color-accent); border-radius: var(--radius-full); transition: width .5s ease; }
   #hero-full-state { display: none; }
 
   .google-cta {
-    display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
-    padding: 14px 20px; background: white; border: 1px solid #dadce0;
-    border-radius: 10px; font-size: 16px; font-weight: 600; font-family: inherit;
-    cursor: pointer; color: var(--ink); text-decoration: none;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: box-shadow .15s, border-color .15s;
+    display: flex; align-items: center; justify-content: center; gap: var(--space-2); width: 100%;
+    padding: var(--space-3) var(--space-5); background: white; border: 1px solid #dadce0;
+    border-radius: var(--radius-md); font-size: var(--text-md); font-weight: 600; font-family: inherit;
+    cursor: pointer; color: var(--color-text); text-decoration: none;
+    box-shadow: var(--shadow-xs); transition: box-shadow .15s, border-color .15s;
   }
-  .google-cta:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.14); border-color: #bbb; }
+  .google-cta:hover { box-shadow: var(--shadow-sm); border-color: #bbb; }
 
   /* Footer */
-  footer { padding: 32px 0; text-align: center; color: var(--ink-soft); font-size: 13px; border-top: 1px solid var(--line); }
-  footer p + p { margin-top: 6px; }
-  .disclaimer { max-width: 70ch; margin: 0 auto; font-size: 12px; line-height: 1.6; }
+  footer { padding: var(--space-8) 0; text-align: center; color: var(--color-text-muted); font-size: var(--text-sm); border-top: 1px solid var(--color-border); }
+  footer p + p { margin-top: var(--space-1); }
+  .disclaimer { max-width: 70ch; margin: 0 auto; font-size: var(--text-xs); line-height: 1.6; }
 
   /* Responsive */
   @media (max-width: 768px) {
-    .trust-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .trust-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-5); }
     .problem-grid, .steps { grid-template-columns: 1fr; }
-    .pricing-wrap { grid-template-columns: 1fr; padding: 28px; }
+    .pricing-wrap { grid-template-columns: 1fr; padding: var(--space-6); }
     .form-row { flex-direction: column; }
-    .hero { padding: 48px 0 36px; }
-    section { padding: 56px 0; }
+    .hero { padding: var(--space-12) 0 var(--space-8); }
+    section { padding: var(--space-14) 0; }
+  }
+
+  @media (max-width: 640px) {
+    .pricing-wrap { grid-template-columns: 1fr; padding: var(--space-6); }
   }
 </style>
 </head>
@@ -218,8 +215,8 @@
 <nav>
   <div class="container nav-inner">
     <div class="logo">Money<span>Moves</span> AU</div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <a href="vote.html" style="font-size:13px;color:var(--ink-soft);text-decoration:none;padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-weight:600;">🗳 Vote on features</a>
+    <div style="display:flex;align-items:center;gap:var(--space-2);">
+      <a href="vote.html" style="font-size:var(--text-sm);color:var(--color-text-muted);text-decoration:none;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-weight:600;">🗳 Vote on features</a>
       <a href="app.html" class="nav-cta">Try it free →</a>
     </div>
   </div>
@@ -243,13 +240,13 @@
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
           Sign in with Google — get your free plan
         </a>
-        <p class="micro" style="margin-top:12px;">Sign in once · Free plan on screen · Beta users get the PDF free</p>
+        <p class="micro" style="margin-top:var(--space-3);">Sign in once · Free plan on screen · Beta users get the PDF free</p>
       </div>
 
       <!-- Beta full -->
       <div id="hero-full-state">
-        <p style="font-weight:700;font-size:16px;margin-bottom:8px;">🔒 Beta PDF spots are full — 50/50 taken.</p>
-        <p style="font-size:14px;color:var(--ink-soft);margin-bottom:16px;">The free tool is still open — sign in with Google to run your plan on screen.</p>
+        <p style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-2);">🔒 Beta PDF spots are full — 50/50 taken.</p>
+        <p style="font-size:var(--text-base);color:var(--color-text-muted);margin-bottom:var(--space-4);">The free tool is still open — sign in with Google to run your plan on screen.</p>
         <a href="app.html" class="google-cta">
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
           Sign in with Google — try the free tool
@@ -257,7 +254,7 @@
       </div>
 
     </div>
-    <p class="micro" style="margin-top: 14px;"><strong>Free</strong> on-screen plan · Sign in with Google · Financial data never stored.</p>
+    <p class="micro" style="margin-top:var(--space-3);"><strong>Free</strong> on-screen plan · Sign in with Google · Financial data never stored.</p>
   </div>
 </header>
 
@@ -293,7 +290,7 @@
   </div>
 </section>
 
-<section style="background: #fdfcf7; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
+<section style="background: var(--color-bg); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
   <div class="container">
     <div class="section-head">
       <h2>How it works</h2>
@@ -327,21 +324,22 @@
     </div>
     <div class="pricing-wrap">
       <div class="pricing-left">
-        <h3>The Personal Money Plan PDF</h3>
-        <p>Everything in the free tool, plus:</p>
+        <div style="display:inline-block;padding:var(--space-1) var(--space-3);background:var(--color-accent-soft);color:var(--color-accent-dark);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:var(--space-2);">Full Strategy Pack</div>
+        <h3>The 12-Month Aussie Cashflow & Debt Blueprint</h3>
+        <p>Everything in the free tool, plus institutional-grade modeling and 3 negotiation toolkits (A$266 total value):</p>
         <ul class="check-list">
-          <li>Side-by-side car loan scenarios (secured / unsecured / dealer)</li>
-          <li>12-month month-by-month repayment roadmap</li>
-          <li>Personalised debt priority order with rationale</li>
-          <li>Buffer + savings target calculator</li>
-          <li>Printable, shareable, no logins required</li>
+          <li><strong>7-Section Custom Strategy Report:</strong> Side-by-side car loan scenarios, 12-month payoff schedule, 5-yr TCO, and inflation stress-test</li>
+          <li><strong>Bonus 1:</strong> Aussie Car Dealer Negotiation Script & Finance Checklist (A$49 value)</li>
+          <li><strong>Bonus 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet (A$39 value)</li>
+          <li><strong>Bonus 3:</strong> Set-and-Forget Payday Automation Setup (A$29 value)</li>
+          <li><strong>🛡️ 100x Value Guarantee:</strong> Identifies at least A$1,400 in savings or 100% money back within 30 days</li>
         </ul>
       </div>
       <div class="price-tag">
-        <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:var(--green-dark);margin-bottom:6px;">BETA PRICE</div>
-        <div class="price" style="color:var(--green);">FREE</div>
-        <div class="price-sub">first 50 users · then A$14</div>
-        <a href="#signup" class="price-cta" style="background:var(--green);">Reserve your free spot →</a>
+        <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:0.06em;color:var(--color-accent-dark);margin-bottom:var(--space-1);">BETA PRICE</div>
+        <div class="price" style="color:var(--color-accent);">FREE</div>
+        <div class="price-sub">first 50 users · then A$14 (save 95%)</div>
+        <a href="#signup" class="price-cta" style="background:var(--color-accent);">Reserve your free spot →</a>
       </div>
     </div>
   </div>
@@ -363,7 +361,7 @@
     <div class="faq-item"><div class="faq-q">Do I need to give you my bank details?</div><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></div>
     <div class="faq-item"><div class="faq-q">Is my information private?</div><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></div>
     <div class="faq-item"><div class="faq-q">Is the tool live now?</div><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. Sign in with Google, run your plan — no bank details, no financial adviser required.</div></div>
-    <div class="faq-item"><div class="faq-q">Why charge for the PDF?</div><div class="faq-a">It keeps the free tool genuinely free, with no ads and no affiliate links pushing you to a particular bank or lender. The PDF is optional and only worth buying if you want the full personalised plan.</div></div>
+    <div class="faq-item"><div class="faq-q">Why charge for the PDF Blueprint?</div><div class="faq-a">It keeps the free tool genuinely free, with zero ads and zero lender kickbacks. The 12-Month Blueprint is for Australians who want an institutional-grade, 7-section decision pack with negotiation scripts to avoid overpaying $3,000–$8,000 on car finance and loan interest. Plus, it's backed by our 30-Day "100x Value" Money-Back Guarantee: if it doesn't uncover at least A$1,400 in potential savings, you get a prompt 100% refund.</div></div>
   </div>
 </section>
 
@@ -371,8 +369,8 @@
   <div class="container">
     <div class="final-cta">
       <h2>Ready? Get your plan in 2 minutes.</h2>
-      <p style="opacity: 0.9; margin-top: 8px;">Free to use. Sign in with Google. No bank details. Beta users get the PDF free.</p>
-      <div class="form-card" style="margin: 24px auto 0;">
+      <p style="opacity: 0.9; margin-top: var(--space-2);">Free to use. Sign in with Google. No bank details. Beta users get the PDF free.</p>
+      <div class="form-card" style="margin: var(--space-6) auto 0;">
 
         <!-- Beta open -->
         <div id="footer-open-state">
@@ -384,12 +382,12 @@
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
             Sign in with Google — get your free plan
           </a>
-          <p class="micro" style="margin-top: 10px; color: rgba(0,0,0,0.5);">Sign in once · free plan instantly</p>
+          <p class="micro" style="margin-top:var(--space-2);">Sign in once · free plan instantly</p>
         </div>
 
         <!-- Beta full -->
         <div id="footer-full-state" style="display:none;">
-          <p style="font-weight:700;font-size:16px;margin-bottom:12px;">🔒 Beta PDF spots are full — 50/50 taken.</p>
+          <p style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-3);">🔒 Beta PDF spots are full — 50/50 taken.</p>
           <a href="app.html" class="google-cta">
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
             Sign in with Google — try the free tool
@@ -404,8 +402,8 @@
 <footer>
   <div class="container">
     <p><strong>MoneyMoves AU</strong> · Built for Australians, by people who hate jargon</p>
-    <p style="margin-top: 12px;">© 2026 MoneyMoves AU · <a href="privacy.html" style="color: var(--ink-soft);">Privacy</a> · <a href="terms.html" style="color: var(--ink-soft);">Terms</a></p>
-    <p class="disclaimer" style="margin-top: 18px;">
+    <p style="margin-top: var(--space-3);">© 2026 MoneyMoves AU · <a href="privacy.html" style="color: var(--color-text-muted);">Privacy</a> · <a href="terms.html" style="color: var(--color-text-muted);">Terms</a></p>
+    <p class="disclaimer" style="margin-top:var(--space-4);">
       <strong>Important:</strong> MoneyMoves AU provides general information and educational tools only. It is not personal financial product advice and does not take into account your objectives, financial situation, or needs. Before acting on any output, consider whether it is appropriate for you and consider speaking to a licensed Australian financial adviser. Past performance is not indicative of future results.
     </p>
   </div>
@@ -441,14 +439,13 @@
     document.getElementById('footer-open-state').style.display = isFull ? 'none' : 'block';
     document.getElementById('footer-full-state').style.display = isFull ? 'block' : 'none';
 
-    // Visitor count stat
-    const vc = document.getElementById('visitor-count');
-    if (vc) vc.textContent = (count + 1243).toLocaleString('en-AU');
   }
 
   // Init Firebase + live beta counter
   if (DEMO_MODE) {
     updateBetaUI(DEMO_BETA_COUNT);
+    const vc = document.getElementById('visitor-count');
+    if (vc) vc.textContent = DEMO_BETA_COUNT.toLocaleString('en-AU');
   } else {
     firebase.initializeApp(FIREBASE_CONFIG);
     firebase.database().ref('beta/count').on('value', snap => {
@@ -456,6 +453,10 @@
     });
     // Visitor counter (separate from beta)
     firebase.database().ref('visitors').transaction(v => (v || 0) + 1);
+    firebase.database().ref('visitors').on('value', snap => {
+      const vc = document.getElementById('visitor-count');
+      if (vc) vc.textContent = (snap.val() || 0).toLocaleString('en-AU');
+    });
   }
 </script>
 

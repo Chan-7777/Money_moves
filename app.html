@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en-AU">
 <head>
 <meta charset="UTF-8" />
@@ -9,27 +9,38 @@
      INTEGRATION POINTS — swap these before going live
      ════════════════════════════════════════════════════════════════ -->
 <script>
-  // 1. PayPal Client ID for the A$14 PDF checkout (sandbox — swap for live ID when ready).
-  //    When Stripe invite arrives, this can be swapped back with minimal change.
-  const PAYPAL_CLIENT_ID = 'AcJTaBFXoVRsk2ls2zjZ2t7hnIlFWDl3t1yQfU1t9tg1FJo3Bwcdl1ZcFJymPVjHkVxb2mofwYoxMGSJ';
-
-  // 2. Email capture endpoint (Formspree / ConvertKit / Mailchimp / your own).
-  //    Receives { email, plan_summary } as JSON.
-  const EMAIL_ENDPOINT = 'https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID';
-
-  // 3. Public site URL — used by share buttons when the page is opened locally
-  //    (file:// URLs are useless on Reddit/WhatsApp). Once deployed, replace this
-  //    with your live domain (e.g. 'https://moneymoves.com.au/app').
-  const SITE_URL = 'https://moneymoves.com.au';
+  // Email capture — wired to /api/capture-email (Resend-backed).
+  const EMAIL_ENDPOINT = '/api/capture-email';
 </script>
+<!-- PayPal SDK loaded on demand via loadPayPalSdk() — client ID served from /api/config -->
 
-<!-- PayPal JS SDK — kept for post-beta re-enable -->
-<script defer src="https://www.paypal.com/sdk/js?client-id=AcJTaBFXoVRsk2ls2zjZ2t7hnIlFWDl3t1yQfU1t9tg1FJo3Bwcdl1ZcFJymPVjHkVxb2mofwYoxMGSJ&currency=AUD&intent=capture"></script>
-
-<!-- Firebase — beta counter (same project as index.html) -->
+<!-- Firebase — beta counter + waitlist (RTDB only; auth moved to Clerk below) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+<!-- ════════════════════════════════════════════════════════════
+     CLERK SETUP — 2 minutes, free Hobby plan covers all of this
+     ════════════════════════════════════════════════════════════
+     1. Go to https://dashboard.clerk.com → Create application
+     2. Configure → SSO Connections → enable Google
+     3. Configure → API Keys → copy the literal <script> tag shown
+        there (it fills in your Frontend API URL automatically) and
+        replace the placeholder <script> block below with it
+     4. Put the matching Secret Key in CLERK_SECRET_KEY (Vercel env var)
+     ════════════════════════════════════════════════════════════ -->
+<!-- defer intentionally dropped — our sign-in code below runs from a
+     non-deferred inline script and needs window.Clerk to already exist -->
+<script
+  crossorigin="anonymous"
+  src="https://sharp-garfish-1060.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+  type="text/javascript"
+></script>
+<script
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_test_c2hhcnAtZ2FyZmlzaC0xMDYwLmNsZXJrLmFjY291bnRzLmRldiQ"
+  src="https://sharp-garfish-1060.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+  type="text/javascript"
+></script>
 <script>
   const FIREBASE_CONFIG_APP = {
     apiKey:            "AIzaSyDAP8vdCkcdATOt69ntxg1iINPtdNShjMk",
@@ -55,107 +66,96 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
 
+<link rel="stylesheet" href="design-system/tokens.css" />
+<link rel="stylesheet" href="design-system/components.css" />
+
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --green: #4a7c59;
-    --green-dark: #32583f;
-    --green-soft: #eef3f0;
-    --gold: #d4a373;
-    --ink: #1b262c;
-    --ink-soft: #4a5d66;
-    --bg: #f9f8f6;
-    --card: #ffffff;
-    --line: #e8e6e1;
-    --red: #c95d53;
-    --red-soft: #fdf2f1;
-    --amber: #d49547;
-    --amber-soft: #fbf5ee;
-  }
+  /* Design tokens live in design-system/tokens.css */
   body {
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-    color: var(--ink); background: var(--bg);
+    color: var(--color-text); background: var(--color-bg);
     line-height: 1.55; -webkit-font-smoothing: antialiased;
     min-height: 100vh;
   }
-  .container { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+  .container { max-width: 760px; margin: 0 auto; padding: 0 var(--space-5); }
 
   nav {
-    padding: 16px 0; border-bottom: 1px solid var(--line);
+    padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border);
     background: rgba(247,246,241,0.95); backdrop-filter: blur(8px);
     position: sticky; top: 0; z-index: 50;
   }
   .nav-inner { display: flex; justify-content: space-between; align-items: center; }
-  .logo { font-weight: 800; font-size: 18px; }
-  .logo span { color: var(--green); }
-  .badge { font-size: 11px; padding: 3px 8px; background: var(--gold); color: var(--ink); border-radius: 99px; font-weight: 700; margin-left: 8px; }
+  .logo { font-weight: 800; font-size: var(--text-lg); }
+  .logo span { color: var(--color-accent); }
+  .badge { font-size: var(--text-xs); padding: 3px var(--space-2); background: var(--color-warning); color: var(--color-text); border-radius: var(--radius-full); font-weight: 700; margin-left: var(--space-2); }
 
-  header.intro { padding: 48px 0 24px; }
-  h1 { font-size: clamp(24px, 3.5vw, 32px); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
-  .lede { font-size: 17px; color: var(--ink-soft); max-width: 60ch; }
+  header.intro { padding: var(--space-12) 0 var(--space-6); }
+  h1 { font-size: var(--text-2xl); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: var(--space-3); }
+  .lede { font-size: var(--text-md); color: var(--color-text-muted); max-width: 60ch; }
 
-  .progress { display: flex; gap: 8px; margin: 24px 0 32px; }
-  .progress-step { flex: 1; height: 6px; background: var(--line); border-radius: 99px; transition: background .3s; }
-  .progress-step.active { background: var(--green); }
-  .progress-step.done { background: var(--green-dark); }
+  .progress { display: flex; gap: var(--space-2); margin: var(--space-6) 0 var(--space-8); }
+  .progress-step { flex: 1; height: 6px; background: var(--color-border); border-radius: var(--radius-full); transition: background .3s; }
+  .progress-step.active { background: var(--color-accent); }
+  .progress-step.done { background: var(--color-accent-dark); }
 
   .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 28px; margin-bottom: 20px;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 16px rgba(13,27,30,0.04);
+    background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    padding: var(--space-6); margin-bottom: var(--space-5);
+    box-shadow: var(--shadow-md);
   }
-  .step-label { font-size: 13px; font-weight: 700; color: var(--green); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
-  .card h2 { font-size: 22px; margin-bottom: 6px; letter-spacing: -0.01em; }
-  .card .sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 22px; }
+  .step-label { font-size: var(--text-sm); font-weight: 700; color: var(--color-accent); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: var(--space-1); }
+  .card h2 { font-size: var(--text-xl); margin-bottom: var(--space-1); letter-spacing: -0.01em; }
+  .card .sub { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-5); }
 
-  .field { margin-bottom: 18px; }
-  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
-  label .hint { font-weight: 400; color: var(--ink-soft); font-size: 13px; }
+  .field { margin-bottom: var(--space-4); }
+  label { display: block; font-weight: 600; font-size: var(--text-sm); margin-bottom: var(--space-1); }
+  label .hint { font-weight: 400; color: var(--color-text-muted); font-size: var(--text-sm); }
   .input-wrap { position: relative; }
   .input-wrap .prefix {
-    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-    color: var(--ink-soft); font-weight: 600; font-size: 15px; pointer-events: none;
+    position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%);
+    color: var(--color-text-muted); font-weight: 600; font-size: var(--text-base); pointer-events: none;
   }
   .input-wrap .suffix {
-    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-    color: var(--ink-soft); font-size: 14px; pointer-events: none;
+    position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%);
+    color: var(--color-text-muted); font-size: var(--text-sm); pointer-events: none;
   }
   input[type="number"], input[type="text"], input[type="email"], select {
-    width: 100%; padding: 12px 14px; padding-left: 30px;
-    border: 1px solid var(--line); border-radius: 10px; font-size: 16px;
-    font-family: inherit; background: #fafaf6; outline: none; -moz-appearance: textfield;
+    width: 100%; padding: var(--space-3) var(--space-3); padding-left: 30px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-md);
+    font-family: inherit; background: var(--color-bg); outline: none; -moz-appearance: textfield;
   }
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-  .input-wrap.no-prefix input { padding-left: 14px; }
-  input:focus, select:focus { border-color: var(--green); background: white; }
-  input.error, select.error { border-color: var(--red); background: var(--red-soft); }
+  .input-wrap.no-prefix input { padding-left: var(--space-3); }
+  input:focus, select:focus { border-color: var(--color-accent); background: var(--color-surface); }
+  input.error, select.error { border-color: var(--color-danger); background: var(--color-danger-soft); }
 
-  .field-error { color: var(--red); font-size: 13px; margin-top: 6px; display: none; }
+  .field-error { color: var(--color-danger); font-size: var(--text-sm); margin-top: var(--space-1); display: none; }
   .field-error.show { display: block; }
 
-  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
   .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
   .radio-pill {
-    padding: 10px 16px; border: 1px solid var(--line); border-radius: 99px;
-    cursor: pointer; font-size: 14px; font-weight: 600; background: white; user-select: none;
+    padding: 10px var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-full);
+    cursor: pointer; font-size: var(--text-sm); font-weight: 600; background: var(--color-surface); user-select: none;
   }
-  .radio-pill.selected { background: var(--ink); color: white; border-color: var(--ink); }
+  .radio-pill.selected { background: var(--color-text); color: var(--color-surface); border-color: var(--color-text); }
 
   /* Help icon + tooltip */
   .help {
     display: inline-flex; align-items: center; justify-content: center;
     width: 16px; height: 16px; border-radius: 50%;
-    background: var(--ink-soft); color: white; font-size: 11px;
-    margin-left: 6px; cursor: help; font-weight: 700;
+    background: var(--color-text-muted); color: var(--color-surface); font-size: var(--text-xs);
+    margin-left: var(--space-1); cursor: help; font-weight: 700;
     position: relative;
   }
   .help::after {
     content: attr(data-tip);
-    position: absolute; bottom: calc(100% + 8px); left: 50%;
+    position: absolute; bottom: calc(100% + var(--space-2)); left: 50%;
     transform: translateX(-50%);
-    background: var(--ink); color: white; padding: 8px 12px;
-    border-radius: 6px; font-size: 12px; font-weight: 400;
+    background: var(--color-text); color: var(--color-surface); padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: 400;
     width: 240px; line-height: 1.4;
     opacity: 0; pointer-events: none; transition: opacity .2s;
     z-index: 100; text-align: left;
@@ -165,142 +165,142 @@
   /* Debt repeater */
   .debt-row {
     display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto;
-    gap: 8px; align-items: end; padding: 12px; border: 1px solid var(--line);
-    border-radius: 10px; margin-bottom: 10px; background: #fafaf6;
+    gap: var(--space-2); align-items: end; padding: var(--space-3); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); margin-bottom: 10px; background: var(--color-bg);
   }
-  .debt-row label { font-size: 12px; margin-bottom: 4px; }
-  .debt-row input, .debt-row select { padding: 8px 10px; padding-left: 22px; font-size: 14px; }
+  .debt-row label { font-size: var(--text-xs); margin-bottom: var(--space-1); }
+  .debt-row input, .debt-row select { padding: var(--space-2) 10px; padding-left: 22px; font-size: var(--text-sm); }
   .debt-row .input-wrap.no-prefix input { padding-left: 10px; padding-right: 38px; }
-  .debt-row .input-wrap .prefix { left: 10px; font-size: 13px; }
-  .debt-row .input-wrap .suffix { right: 8px; font-size: 11px; }
+  .debt-row .input-wrap .prefix { left: 10px; font-size: var(--text-sm); }
+  .debt-row .input-wrap .suffix { right: var(--space-2); font-size: var(--text-xs); }
   .debt-row select { padding-left: 10px; }
   .btn-icon {
-    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line);
-    background: white; cursor: pointer; font-size: 18px; color: var(--red);
+    width: 44px; height: 44px; min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--color-border);
+    background: var(--color-surface); cursor: pointer; font-size: var(--text-lg); color: var(--color-danger);
   }
   .btn-add {
-    margin-top: 6px; padding: 10px 14px; border: 1px dashed var(--line);
-    background: transparent; border-radius: 8px; cursor: pointer; font-size: 14px;
-    width: 100%; color: var(--ink-soft); font-weight: 600;
+    margin-top: var(--space-1); padding: 10px var(--space-3); border: 1px dashed var(--color-border);
+    background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm);
+    width: 100%; color: var(--color-text-muted); font-weight: 600;
   }
-  .btn-add:hover { border-color: var(--green); color: var(--green); }
+  .btn-add:hover { border-color: var(--color-accent); color: var(--color-accent); }
 
-  .actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; }
+  .actions { display: flex; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-2); }
   .btn {
-    padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 16px;
+    padding: var(--space-3) var(--space-6); border-radius: var(--radius-md); font-weight: 700; font-size: var(--text-md);
     cursor: pointer; border: none; font-family: inherit;
   }
-  .btn-primary { background: var(--green); color: white; }
-  .btn-primary:hover { background: var(--green-dark); }
-  .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
-  .btn-secondary { background: white; color: var(--ink); border: 1px solid var(--line); }
-  .btn-secondary:hover { border-color: var(--ink); }
+  .btn-primary { background: var(--color-accent); color: var(--color-surface); }
+  .btn-primary:hover { background: var(--color-accent-dark); }
+  .btn-primary:disabled { background: var(--color-ui-disabled); cursor: not-allowed; }
+  .btn-secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+  .btn-secondary:hover { border-color: var(--color-text); }
 
   .step { display: none !important; }
   .step.active { display: block !important; animation: fadeIn .25s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
   /* Results */
-  .result-hero { padding: 28px; border-radius: 14px; margin-bottom: 20px; }
-  .result-hero.green { background: var(--green-soft); border: 1px solid var(--green); }
-  .result-hero.amber { background: var(--amber-soft); border: 1px solid var(--amber); }
-  .result-hero.red { background: var(--red-soft); border: 1px solid var(--red); }
-  .result-hero h3 { font-size: 22px; margin-bottom: 6px; }
+  .result-hero { padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-5); }
+  .result-hero.green { background: var(--color-accent-soft); border: 1px solid var(--color-accent); }
+  .result-hero.amber { background: var(--color-warning-soft); border: 1px solid var(--color-warning); }
+  .result-hero.red { background: var(--color-danger-soft); border: 1px solid var(--color-danger); }
+  .result-hero h3 { font-size: var(--text-xl); margin-bottom: var(--space-1); }
 
   .move {
-    display: flex; gap: 16px; padding: 20px; border: 1px solid var(--line);
-    border-radius: 12px; background: white; margin-bottom: 12px;
+    display: flex; gap: var(--space-4); padding: var(--space-5); border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg); background: var(--color-surface); margin-bottom: var(--space-3);
   }
   .move-num {
     flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
-    background: var(--ink); color: white; display: flex; align-items: center; justify-content: center;
+    background: var(--color-text); color: var(--color-surface); display: flex; align-items: center; justify-content: center;
     font-weight: 700;
   }
-  .move-num.priority-1 { background: var(--green); }
-  .move-num.priority-2 { background: var(--ink); }
-  .move-num.priority-3 { background: var(--ink-soft); }
-  .move h4 { font-size: 17px; margin-bottom: 4px; }
-  .move p { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
-  .move .why { font-size: 13px; color: var(--ink-soft); padding: 8px 12px; background: #fafaf6; border-radius: 8px; border-left: 3px solid var(--green); }
+  .move-num.priority-1 { background: var(--color-accent); }
+  .move-num.priority-2 { background: var(--color-text); }
+  .move-num.priority-3 { background: var(--color-text-muted); }
+  .move h4 { font-size: var(--text-md); margin-bottom: var(--space-1); }
+  .move p { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-1); }
+  .move .why { font-size: var(--text-sm); color: var(--color-text-muted); padding: var(--space-2) var(--space-3); background: var(--color-bg); border-radius: var(--radius-sm); border-left: 3px solid var(--color-accent); }
 
-  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-  .summary-tile { padding: 16px; background: white; border: 1px solid var(--line); border-radius: 10px; }
-  .summary-tile .v { font-size: 20px; font-weight: 800; }
-  .summary-tile .l { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin-bottom: var(--space-5); }
+  .summary-tile { padding: var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+  .summary-tile .v { font-size: var(--text-lg); font-weight: 800; }
+  .summary-tile .l { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
   /* Car comparison teaser */
   .car-compare {
-    background: white; border: 1px solid var(--line); border-radius: 12px;
-    padding: 20px; margin: 16px 0;
+    background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    padding: var(--space-5); margin: var(--space-4) 0;
   }
-  .car-compare h4 { font-size: 16px; margin-bottom: 12px; }
+  .car-compare h4 { font-size: var(--text-md); margin-bottom: var(--space-3); }
   .car-compare-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: var(--space-3);
   }
   .car-tile {
-    padding: 14px; border-radius: 8px; background: #fafaf6;
-    border: 1px solid var(--line);
+    padding: var(--space-3); border-radius: var(--radius-sm); background: var(--color-bg);
+    border: 1px solid var(--color-border);
   }
-  .car-tile.bank { background: var(--green-soft); border-color: var(--green); }
-  .car-tile .label { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
-  .car-tile .rate { font-size: 14px; font-weight: 600; margin: 2px 0; }
-  .car-tile .pmt { font-size: 18px; font-weight: 800; }
-  .car-tile .total { font-size: 12px; color: var(--ink-soft); }
+  .car-tile.bank { background: var(--color-accent-soft); border-color: var(--color-accent); }
+  .car-tile .label { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .car-tile .rate { font-size: var(--text-sm); font-weight: 600; margin: 2px 0; }
+  .car-tile .pmt { font-size: var(--text-lg); font-weight: 800; }
+  .car-tile .total { font-size: var(--text-xs); color: var(--color-text-muted); }
   .savings-banner {
-    padding: 12px 16px; background: var(--gold); color: var(--ink);
-    border-radius: 8px; font-weight: 700; font-size: 14px;
+    padding: var(--space-3) var(--space-4); background: var(--color-warning); color: var(--color-text);
+    border-radius: var(--radius-sm); font-weight: 700; font-size: var(--text-sm);
   }
 
   /* Email + share */
   .email-card {
-    margin-top: 20px; padding: 20px; background: white;
-    border: 1px solid var(--line); border-radius: 12px;
+    margin-top: var(--space-5); padding: var(--space-5); background: var(--color-surface);
+    border: 1px solid var(--color-border); border-radius: var(--radius-lg);
   }
-  .email-card h4 { font-size: 16px; margin-bottom: 4px; }
-  .email-card p { font-size: 14px; color: var(--ink-soft); margin-bottom: 14px; }
-  .email-row { display: flex; gap: 8px; }
-  .email-row input { padding-left: 14px; }
-  .email-row button { padding: 12px 18px; font-size: 14px; }
-  .email-success { display: none; padding: 12px; background: var(--green-soft); border-radius: 8px; color: var(--green-dark); font-weight: 600; font-size: 14px; }
+  .email-card h4 { font-size: var(--text-md); margin-bottom: var(--space-1); }
+  .email-card p { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+  .email-row { display: flex; gap: var(--space-2); }
+  .email-row input { padding-left: var(--space-3); }
+  .email-row button { padding: var(--space-3) var(--space-4); font-size: var(--text-sm); }
+  .email-success { display: none; padding: var(--space-3); background: var(--color-accent-soft); border-radius: var(--radius-sm); color: var(--color-accent-dark); font-weight: 600; font-size: var(--text-sm); }
 
-  .share-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .share-row { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
   .share-btn {
-    padding: 10px 14px; border: 1px solid var(--line); background: white;
-    border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
-    font-family: inherit; color: var(--ink); display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px var(--space-3); border: 1px solid var(--color-border); background: var(--color-surface);
+    border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm); font-weight: 600;
+    font-family: inherit; color: var(--color-text); display: inline-flex; align-items: center; gap: var(--space-1);
   }
-  .share-btn:hover { border-color: var(--ink); }
-  .share-btn.copied { background: var(--green-soft); border-color: var(--green); color: var(--green-dark); }
+  .share-btn:hover { border-color: var(--color-text); }
+  .share-btn.copied { background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-accent-dark); }
 
   .upsell {
-    margin-top: 28px; padding: 28px; background: var(--green-soft);
-    border: 1px solid var(--green); border-radius: 14px;
+    margin-top: var(--space-6); padding: var(--space-6); background: var(--color-accent-soft);
+    border: 1px solid var(--color-accent); border-radius: var(--radius-lg);
   }
-  .upsell h3 { margin-bottom: 8px; }
-  .upsell p { color: var(--ink-soft); margin-bottom: 14px; font-size: 15px; }
+  .upsell h3 { margin-bottom: var(--space-2); }
+  .upsell p { color: var(--color-text-muted); margin-bottom: var(--space-3); font-size: var(--text-base); }
   .upsell .pdf-btn {
-    display: inline-block; background: var(--ink); color: white;
-    padding: 14px 24px; border-radius: 10px; font-weight: 700;
-    text-decoration: none; font-size: 16px; cursor: pointer;
+    display: inline-block; background: var(--color-text); color: var(--color-surface);
+    padding: var(--space-3) var(--space-6); border-radius: var(--radius-md); font-weight: 700;
+    text-decoration: none; font-size: var(--text-md); cursor: pointer;
   }
-  .upsell .pdf-btn:hover { background: var(--green-dark); }
-  .upsell .price-strike { color: var(--ink-soft); text-decoration: line-through; margin-right: 8px; font-size: 14px; }
+  .upsell .pdf-btn:hover { background: var(--color-accent-dark); }
+  .upsell .price-strike { color: var(--color-text-muted); text-decoration: line-through; margin-right: var(--space-2); font-size: var(--text-sm); }
 
   .disclaimer-block {
-    margin-top: 24px; padding: 16px 20px;
-    background: #fdfcf7; border: 1px solid var(--line);
-    border-radius: 10px; font-size: 12px; color: var(--ink-soft); line-height: 1.7;
+    margin-top: var(--space-6); padding: var(--space-4) var(--space-5);
+    background: var(--color-bg); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.7;
   }
-  .disclaimer-block strong { color: var(--ink); }
-  .disclaimer-block p + p { margin-top: 8px; }
+  .disclaimer-block strong { color: var(--color-text); }
+  .disclaimer-block p + p { margin-top: var(--space-2); }
 
   .restart-bar {
-    margin-top: 28px; padding: 18px; text-align: center;
-    border-top: 1px solid var(--line);
+    margin-top: var(--space-6); padding: var(--space-4); text-align: center;
+    border-top: 1px solid var(--color-border);
   }
-  .restart-bar .btn-secondary { padding: 10px 22px; font-size: 14px; }
+  .restart-bar .btn-secondary { padding: 10px var(--space-5); font-size: var(--text-sm); }
 
-  footer { padding: 32px 0; text-align: center; color: var(--ink-soft); font-size: 13px; }
+  footer { padding: var(--space-8) 0; text-align: center; color: var(--color-text-muted); font-size: var(--text-sm); }
 
   @media (max-width: 640px) {
     .debt-row { grid-template-columns: 1fr 1fr; }
@@ -314,82 +314,82 @@
      v0.5 UI POLISH — overrides for issues raised in audit
      ───────────────────────────────────────────────────────── */
   /* #1 BETA badge: align with wordmark baseline */
-  .logo { display: inline-flex; align-items: center; gap: 8px; }
+  .logo { display: inline-flex; align-items: center; gap: var(--space-2); }
   .badge { margin-left: 0; line-height: 1; }
   /* #2 Start-over needs button affordance */
   .nav-start-over {
-    color: var(--ink-soft); font-size: 13px; text-decoration: none;
-    padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+    color: var(--color-text-muted); font-size: var(--text-sm); text-decoration: none;
+    padding: var(--space-1) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-full);
     transition: border-color .15s, color .15s;
   }
-  .nav-start-over:hover { color: var(--ink); border-color: var(--ink); }
+  .nav-start-over:hover { color: var(--color-text); border-color: var(--color-text); }
   /* #3 currency prefix breathing room — bump padding so A$ never visually fuses with placeholder */
-  input[type="number"], input[type="email"] { padding-left: 36px; }
-  .input-wrap.no-prefix input { padding-left: 14px; }
+  input[type="number"], input[type="email"] { padding-left: var(--space-8); }
+  .input-wrap.no-prefix input { padding-left: var(--space-3); }
   /* #6 delete × softened — grey by default, red on hover */
-  .btn-icon { color: var(--ink-soft); transition: color .15s, border-color .15s, background .15s; }
-  .btn-icon:hover { color: var(--red); border-color: var(--red); background: var(--red-soft); }
+  .btn-icon { color: var(--color-text-muted); transition: color .15s, border-color .15s, background .15s; }
+  .btn-icon:hover { color: var(--color-danger); border-color: var(--color-danger); background: var(--color-danger-soft); }
   /* #7 rate suffix: pin inside input border, badge style */
   .input-wrap .suffix {
-    background: rgba(13,27,30,0.04); padding: 2px 6px; border-radius: 4px;
-    color: var(--ink-soft); font-weight: 500;
+    background: rgba(13,27,30,0.04); padding: 2px var(--space-1); border-radius: var(--space-1);
+    color: var(--color-text-muted); font-weight: 500;
   }
   /* #8 radio pills: matched min-width per pair */
   .radio-pill { min-width: 140px; text-align: center; }
   /* #9 Step 4 priority chips: 3+2 centred grid so 'Get the car' doesn't orphan */
   #goal-group { justify-content: center; }
   /* #10 eyebrow labels: more readable letter-spacing */
-  .summary-tile .l { font-size: 11px; letter-spacing: 0.08em; }
+  .summary-tile .l { font-size: var(--text-xs); letter-spacing: 0.08em; }
   /* #11 buffer status — semantic colour */
-  .summary-tile .v.status-bad { color: var(--red); }
-  .summary-tile .v.status-warn { color: var(--amber); }
-  .summary-tile .v.status-good { color: var(--green); }
+  .summary-tile .v.status-bad { color: var(--color-danger); }
+  .summary-tile .v.status-warn { color: var(--color-warning); }
+  .summary-tile .v.status-good { color: var(--color-accent); }
   /* #12 'Why this rank' inherits move severity */
-  .move .why.warn { border-left-color: var(--amber); background: var(--amber-soft); }
-  .move .why.bad { border-left-color: var(--red); background: var(--red-soft); }
+  .move .why.warn { border-left-color: var(--color-warning); background: var(--color-warning-soft); }
+  .move .why.bad { border-left-color: var(--color-danger); background: var(--color-danger-soft); }
   /* #14 Send button: hold its label on one line */
   .email-row button { min-width: 100px; white-space: nowrap; }
   /* #15 Email card vs share row separator */
   .email-card .share-row {
-    margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line);
+    margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--color-border);
   }
   .email-card .share-label {
-    font-size: 12px; color: var(--ink-soft); font-weight: 700;
+    font-size: var(--text-xs); color: var(--color-text-muted); font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
   }
   /* #16 PDF CTA: brand green to match the rest of the UI */
-  .upsell .pdf-btn { background: var(--green); }
-  .upsell .pdf-btn:hover { background: var(--green-dark); }
+  .upsell .pdf-btn { background: var(--color-accent); }
+  .upsell .pdf-btn:hover { background: var(--color-accent-dark); }
   /* #17 PDF card border: green not yellow (no warning connotation) */
   .upsell {
-    background: var(--green-soft);
-    border-color: var(--green);
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
   }
   /* #18 Disclaimer hierarchy: tighter and more clearly subordinate */
-  .disclaimer-block { font-size: 13px; color: #6b7280; }
-  .disclaimer-block strong { color: var(--ink); display: inline-block; margin-bottom: 4px; }
+  .disclaimer-block { font-size: var(--text-sm); color: var(--color-text-muted); }
+  .disclaimer-block strong { color: var(--color-text); display: inline-block; margin-bottom: var(--space-1); }
   /* #19 Restart bar: more prominent */
-  .restart-bar { margin-top: 32px; padding: 22px; }
+  .restart-bar { margin-top: var(--space-8); padding: var(--space-5); }
   .restart-bar .btn-secondary {
-    padding: 12px 28px; font-size: 15px;
-    border-color: var(--green); color: var(--green-dark);
+    padding: var(--space-3) var(--space-6); font-size: var(--text-base);
+    border-color: var(--color-accent); color: var(--color-accent-dark);
   }
-  .restart-bar .btn-secondary:hover { background: var(--green-soft); }
+  .restart-bar .btn-secondary:hover { background: var(--color-accent-soft); }
   /* Step 1 cashflow soft warning visibility */
   #cashflow-warn.show { display: block !important; }
   /* Input error visual: red border + tinted bg whenever .error class present (already declared above; reinforced here) */
-  input.error, select.error { border-color: var(--red) !important; background: var(--red-soft) !important; }
+  input.error, select.error { border-color: var(--color-danger) !important; background: var(--color-danger-soft) !important; }
   /* Belt-and-braces: step visibility is now handled by the base rules above with !important on both sides */
   /* #4 reinforce field-error visibility — show class wins */
   .field-error.show { display: block !important; }
-  /* #6 delete × — soften further (white bg, grey icon) */
+  /* #6 delete × — soften further (surface bg, grey icon) */
   .btn-icon {
-    color: var(--ink-soft) !important; background: white !important;
-    border: 1px solid var(--line) !important;
+    color: var(--color-text-muted) !important; background: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
   }
   .btn-icon:hover {
-    color: var(--red) !important; border-color: var(--red) !important;
-    background: var(--red-soft) !important;
+    color: var(--color-danger) !important; border-color: var(--color-danger) !important;
+    background: var(--color-danger-soft) !important;
   }
   /* #9 Step 4 priority chips: 5-up grid with centred wrap */
   #goal-group {
@@ -399,31 +399,31 @@
   #goal-group .radio-pill { flex: 0 1 auto; min-width: 130px; }
   /* #13 trim move card body density: compact 'Why' as collapsible <details> */
   .move details {
-    margin-top: 6px; font-size: 13px; color: var(--ink-soft);
+    margin-top: var(--space-1); font-size: var(--text-sm); color: var(--color-text-muted);
   }
   .move details summary {
-    cursor: pointer; color: var(--green); font-weight: 600;
+    cursor: pointer; color: var(--color-accent); font-weight: 600;
     list-style: none; user-select: none;
   }
   .move details summary::-webkit-details-marker { display: none; }
   .move details summary::before { content: '▸ '; transition: transform .15s; display: inline-block; }
   .move details[open] summary::before { content: '▾ '; }
   .move details .why {
-    margin-top: 8px; font-size: 13px;
-    padding: 8px 12px; background: #fafaf6; border-radius: 8px;
-    border-left: 3px solid var(--green);
+    margin-top: var(--space-2); font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3); background: var(--color-bg); border-radius: var(--radius-sm);
+    border-left: 3px solid var(--color-accent);
   }
 
   /* ─── Aussie Sticker Strip ─── */
   .sticker-strip {
-    margin: 32px 0 12px; text-align: center;
+    margin: var(--space-8) 0 var(--space-3); text-align: center;
   }
   .sticker-strip h4 {
-    font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px;
-    color: var(--ink-soft); margin-bottom: 18px; font-weight: 600;
+    font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--color-text-muted); margin-bottom: var(--space-4); font-weight: 600;
   }
   .sticker-grid {
-    display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+    display: flex; justify-content: center; gap: var(--space-5); flex-wrap: wrap;
   }
   .sticker-card {
     width: 140px; text-align: center; transition: transform .3s ease;
@@ -447,39 +447,39 @@
     to   { opacity: 1; transform: scale(1) rotate(0); }
   }
   .sticker-card .sticker-label {
-    margin-top: 8px; font-size: 11px; font-weight: 700;
-    color: var(--ink); letter-spacing: .5px; line-height: 1.3;
+    margin-top: var(--space-2); font-size: var(--text-xs); font-weight: 700;
+    color: var(--color-text); letter-spacing: .5px; line-height: 1.3;
   }
 
   /* ── Auth overlay ── */
   #auth-overlay {
     position: fixed; inset: 0; z-index: 100;
     background: rgba(249,248,246,0.97); backdrop-filter: blur(8px);
-    display: flex; align-items: center; justify-content: center; padding: 24px;
+    display: flex; align-items: center; justify-content: center; padding: var(--space-6);
   }
   .auth-overlay-card {
     text-align: center; max-width: 380px; width: 100%;
-    background: white; border: 1px solid var(--line); border-radius: 16px;
-    padding: 36px 32px; box-shadow: 0 4px 24px rgba(13,27,30,0.08);
+    background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl);
+    padding: var(--space-8) var(--space-8); box-shadow: var(--shadow-lg);
   }
-  .auth-overlay-logo { font-weight: 800; font-size: 22px; margin-bottom: 20px; }
-  .auth-overlay-logo span { color: var(--green); }
-  .auth-overlay-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
-  .auth-overlay-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 24px; line-height: 1.5; }
+  .auth-overlay-logo { font-weight: 800; font-size: var(--text-xl); margin-bottom: var(--space-5); }
+  .auth-overlay-logo span { color: var(--color-accent); }
+  .auth-overlay-title { font-size: var(--text-md); font-weight: 700; margin-bottom: var(--space-2); }
+  .auth-overlay-sub { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-6); line-height: 1.5; }
   .google-btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 12px 24px; border-radius: 10px;
-    background: white; border: 1px solid #dadce0;
-    font-size: 15px; font-weight: 600; font-family: inherit;
-    cursor: pointer; color: var(--ink);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    display: inline-flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-6); border-radius: var(--radius-md);
+    background: var(--color-surface); border: 1px solid #dadce0;
+    font-size: var(--text-base); font-weight: 600; font-family: inherit;
+    cursor: pointer; color: var(--color-text);
+    box-shadow: var(--shadow-xs);
     transition: box-shadow .15s, border-color .15s;
   }
-  .google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.14); border-color: #bbb; }
-  .auth-overlay-legal { font-size: 12px; color: var(--ink-soft); margin-top: 16px; }
+  .google-btn:hover { box-shadow: var(--shadow-sm); border-color: #bbb; }
+  .auth-overlay-legal { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-4); }
   .auth-overlay-legal a { color: inherit; }
-  .nav-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
-  .nav-signout { font-size: 12px; color: var(--ink-soft); background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0; }
+  .nav-user { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+  .nav-signout { font-size: var(--text-xs); color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0; }
 </style>
 </head>
 <body>
@@ -490,6 +490,7 @@
     <div class="auth-overlay-title">Sign in to use the tool</div>
     <p class="auth-overlay-sub">Free to use — no payment needed. Sign in with Google so we know who's using it.</p>
     <button class="google-btn" id="auth-google-btn" onclick="signInWithGoogleApp()">Continue with Google</button>
+    <p id="auth-error-msg" style="color:var(--color-danger);font-size:var(--text-sm);margin-top:var(--space-3);display:none;"></p>
     <p class="auth-overlay-legal">By signing in you agree to our <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms</a>.</p>
   </div>
 </div>
@@ -497,8 +498,8 @@
 <nav>
   <div class="container nav-inner">
     <div class="logo">Money<span>Moves</span> AU<span class="badge">BETA</span></div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <a href="vote.html" style="font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-weight:600;transition:border-color .15s,color .15s;" onmouseover="this.style.color='var(--ink)';this.style.borderColor='var(--ink)'" onmouseout="this.style.color='var(--ink-soft)';this.style.borderColor='var(--line)'">🗳 Vote on features</a>
+    <div style="display:flex;align-items:center;gap:var(--space-3);">
+      <a href="vote.html" style="font-size:var(--text-sm);color:var(--color-text-muted);text-decoration:none;padding:var(--space-1) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-weight:600;transition:border-color .15s,color .15s;" onmouseover="this.style.color='var(--color-text)';this.style.borderColor='var(--color-text)'" onmouseout="this.style.color='var(--color-text-muted)';this.style.borderColor='var(--color-border)'">🗳 Vote on features</a>
       <a href="#" class="nav-start-over" onclick="resetApp(); return false;">Start over</a>
       <span class="nav-user" id="nav-user"></span>
     </div>
@@ -507,7 +508,7 @@
 
 <header class="intro">
   <div class="container">
-    <div style="display:inline-flex; align-items:center; gap:6px; background:var(--green-soft); color:var(--green-dark); padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; margin-bottom:16px;">
+    <div style="display:inline-flex; align-items:center; gap:var(--space-2); background:var(--color-accent-soft); color:var(--color-accent-dark); padding:var(--space-1) var(--space-2); border-radius:var(--radius-full); font-size:var(--text-xs); font-weight:700; margin-bottom:var(--space-4);">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
       Nothing is stored
     </div>
@@ -531,7 +532,7 @@
     <h2>Your monthly money snapshot</h2>
     <p class="sub">Take-home pay and rough living costs. Estimates are fine.</p>
 
-    <div class="field" style="margin-bottom: 24px;">
+    <div class="field" style="margin-bottom:var(--space-6);">
       <label>How do you track your pay and bills?</label>
       <div class="radio-group" id="pay-cycle-group">
         <div class="radio-pill selected" data-val="monthly" onclick="selectPayCycle(this)">Monthly</div>
@@ -554,7 +555,7 @@
 
     <div class="field">
       <label>Do you rent, own with a mortgage, or live with family?</label>
-      <div class="radio-group" style="margin-bottom: 18px;">
+      <div class="radio-group" style="margin-bottom:var(--space-4);">
         <div class="radio-pill selected" onclick="selectHousing(this)">Renting</div>
         <div class="radio-pill" onclick="selectHousing(this)">Mortgage</div>
         <div class="radio-pill" onclick="selectHousing(this)">With family / Board</div>
@@ -568,7 +569,7 @@
       <div class="field-error" id="savings-err">If you have no savings, enter 0 — leaving it blank skips important logic.</div>
     </div>
 
-    <div class="field-error" id="cashflow-warn" style="background: #FFF4D6; color: #6B4F00; border: 1px solid #E8C766; padding: 10px 12px; border-radius: 6px; margin-top: 4px;">
+    <div class="field-error" id="cashflow-warn" style="background: var(--color-warning-soft); color: var(--color-text); border: 1px solid var(--color-warning); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); margin-top: var(--space-1);">
       Heads up — your essentials are higher than your take-home income. The plan will still load, but it'll focus on closing that gap before anything else.
     </div>
 
@@ -588,10 +589,10 @@
 
     <div id="debts-list"></div>
     <button class="btn-add" onclick="addDebtRow()">+ Add a debt</button>
-    <div class="field-error" id="debts-err" style="margin-top: 10px;">One or more debts is missing a type. Please pick one or remove the row.</div>
-    <div class="field-error" id="debts-rate-err" style="margin-top: 10px;">A 0% rate is unusual for that debt type — please enter the actual interest rate (or remove the row if you're unsure).</div>
+    <div class="field-error" id="debts-err" style="margin-top:var(--space-2);">One or more debts is missing a type. Please pick one or remove the row.</div>
+    <div class="field-error" id="debts-rate-err" style="margin-top:var(--space-2);">A 0% rate is unusual for that debt type — please enter the actual interest rate (or remove the row if you're unsure).</div>
 
-    <div class="actions" style="margin-top: 24px;">
+    <div class="actions" style="margin-top:var(--space-6);">
       <button class="btn btn-secondary" onclick="prevStep(2)">← Back</button>
       <button class="btn btn-primary" onclick="nextStep(2)">Next →</button>
     </div>
@@ -624,7 +625,7 @@
           <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="car-deposit" placeholder="5000" min="0" /></div>
         </div>
       </div>
-      <div class="field-error" id="car-deposit-err" style="margin-top: -8px; margin-bottom: 14px;">Your deposit can't be more than the car price. Please check those numbers.</div>
+      <div class="field-error" id="car-deposit-err" style="margin-top:-8px; margin-bottom:var(--space-3);">Your deposit can't be more than the car price. Please check those numbers.</div>
       <div class="row-2">
         <div class="field">
           <label>Dealer / finance company rate</label>
@@ -637,7 +638,7 @@
       </div>
       <div class="field">
         <label>Loan term</label>
-        <select id="car-term" style="padding-left: 14px;">
+        <select id="car-term" style="padding-left:var(--space-3);">
           <option value="3">3 years</option>
           <option value="4">4 years</option>
           <option value="5" selected>5 years (60 months)</option>
@@ -648,7 +649,7 @@
       <div class="field">
         <label>
           Is there a balloon payment at the end?
-          <span class="help" tabindex="0" data-tip="A balloon is a large lump-sum due at the end of the loan — typically 30–50% of the car's value. It makes monthly repayments look cheaper, but you'll either need to pay it in cash, refinance it, or sell the car. Common in dealer/novated leases.">?</span>
+          <span class="help" tabindex="0" aria-label="Help" data-tip="A balloon is a large lump-sum due at the end of the loan — typically 30–50% of the car's value. It makes monthly repayments look cheaper, but you'll either need to pay it in cash, refinance it, or sell the car. Common in dealer/novated leases.">?</span>
         </label>
         <div class="radio-group">
           <div class="radio-pill selected" data-val="no" onclick="selectBalloon(this)">No</div>
@@ -662,7 +663,7 @@
       <div class="field">
         <label>
           Are you considering a novated lease?
-          <span class="help" tabindex="0" data-tip="A novated lease is a salary-packaging arrangement where your employer pays for the car (and often running costs) from your pre-tax salary. Common in Australia. EVs under the Luxury Car Tax fuel-efficient threshold may qualify for an FBT exemption, which can be tax-advantageous. Always get advice from a salary-packaging specialist or tax adviser — eligibility and benefits depend on your employer, vehicle, and personal circumstances.">?</span>
+          <span class="help" tabindex="0" aria-label="Help" data-tip="A novated lease is a salary-packaging arrangement where your employer pays for the car (and often running costs) from your pre-tax salary. Common in Australia. EVs under the Luxury Car Tax fuel-efficient threshold may qualify for an FBT exemption, which can be tax-advantageous. Always get advice from a salary-packaging specialist or tax adviser — eligibility and benefits depend on your employer, vehicle, and personal circumstances.">?</span>
         </label>
         <div class="radio-group">
           <div class="radio-pill selected" data-val="no" onclick="selectNovated(this)">No / not sure</div>
@@ -671,7 +672,7 @@
       </div>
     </div>
 
-    <div class="actions" style="margin-top: 24px;">
+    <div class="actions" style="margin-top:var(--space-6);">
       <button class="btn btn-secondary" onclick="prevStep(3)">← Back</button>
       <button class="btn btn-primary" onclick="nextStep(3)">Next →</button>
     </div>
@@ -697,8 +698,8 @@
       </div>
     </div>
 
-    <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 10px;">
-      <button class="btn btn-primary" id="submit-btn" onclick="generatePlan()" style="width: 100%; font-size: 17px; padding: 16px 24px;">See my money plan</button>
+    <div style="margin-top:var(--space-6); display:flex; flex-direction:column; gap:var(--space-2);">
+      <button class="btn btn-primary" id="submit-btn" onclick="generatePlan()" style="width: 100%; font-size: var(--text-md); padding: var(--space-4) var(--space-6);">See my money plan</button>
       <button class="btn btn-secondary" onclick="prevStep(4)" style="width: 100%;">← Back</button>
     </div>
   </div>
@@ -1011,7 +1012,7 @@ function generatePlan() {
   const monthlyEssentials = state.expenses + totalDebtMin;
   const bufferMonths = monthlyEssentials > 0 ? state.savings / monthlyEssentials : 0;
 
-  const highRate = state.debts.filter(d => d.rate >= RULES.HIGH_RATE_THRESHOLD && !['hecs', 'home_loan'].includes(d.type));
+  const highRate = state.debts.filter(d => d.rate >= RULES.HIGH_RATE_THRESHOLD && !['hecs', 'home_loan', 'ato'].includes(d.type));
   const ato = state.debts.filter(d => d.type === 'ato');
   const midRate = state.debts.filter(d => d.rate < RULES.HIGH_RATE_THRESHOLD && d.rate >= 5 && !['hecs', 'home_loan', 'ato'].includes(d.type));
   const hecs = state.debts.filter(d => d.type === 'hecs');
@@ -1048,7 +1049,7 @@ function generatePlan() {
     });
   }
 
-  if (bufferMonths >= RULES.MIN_BUFFER_MONTHS && bufferMonths < RULES.TARGET_BUFFER_MONTHS && highRate.length === 0) {
+  if (bufferMonths >= RULES.MIN_BUFFER_MONTHS && bufferMonths < RULES.TARGET_BUFFER_MONTHS && highRate.length === 0 && ato.length === 0) {
     const target = monthlyEssentials * RULES.TARGET_BUFFER_MONTHS;
     const gap = target - state.savings;
     moves.push({
@@ -1058,7 +1059,7 @@ function generatePlan() {
     });
   }
 
-  if (midRate.length > 0 && highRate.length === 0 && bufferMonths >= RULES.MIN_BUFFER_MONTHS) {
+  if (midRate.length > 0 && highRate.length === 0 && ato.length === 0 && bufferMonths >= RULES.MIN_BUFFER_MONTHS) {
     midRate.sort((a, b) => b.rate - a.rate);
     const m = midRate[0];
     moves.push({
@@ -1198,13 +1199,13 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
 
   let html = `
     <div class="result-hero ${heroClass}">
-      <div class="step-label" style="color: var(--ink);">Your plan</div>
+      <div class="step-label" style="color: var(--color-text);">Your plan</div>
       <h3>${moves[0].title}</h3>
-      <p style="color: var(--ink-soft);">${moves[0].body.split('.')[0]}.</p>
+      <p style="color: var(--color-text-muted);">${moves[0].body.split('.')[0]}.</p>
     </div>
 
     <div class="summary-grid">
-      <div class="summary-tile"><div class="l">Monthly surplus</div><div class="v" style="color: ${surplus < 0 ? 'var(--red)' : 'var(--green)'};">${fmt(surplus)}</div></div>
+      <div class="summary-tile"><div class="l">Monthly surplus</div><div class="v" style="color: ${surplus < 0 ? 'var(--color-danger)' : 'var(--color-accent)'};">${fmt(surplus)}</div></div>
       <div class="summary-tile"><div class="l">Buffer</div><div class="v">${bufferMonths.toFixed(1)} mo</div></div>
       <div class="summary-tile"><div class="l">Buffer status</div><div class="v status-${buffer.color === 'red' ? 'bad' : buffer.color === 'amber' ? 'warn' : 'good'}">${buffer.label}</div></div>
     </div>
@@ -1230,38 +1231,38 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
           </div>
         </div>
         <div class="savings-banner">You'd save ${fmt(carCompare.totalSaving)} over ${carCompare.term} years by choosing the bank rate.</div>
-        <p style="font-size: 12px; color: var(--ink-soft); margin-top: 10px;">Get the full month-by-month repayment schedule and stress-tested scenarios in the personalised PDF.</p>
+        <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2);">Get the full month-by-month repayment schedule and stress-tested scenarios in the personalised PDF.</p>
       </div>
     `;
   }
 
   // ─── Full debt payoff order (visible whenever there are 2+ debts) ───
   if (debtOrder && debtOrder.length >= 2) {
-    const tierColorMap = { red: 'var(--red)', amber: 'var(--amber)', green: 'var(--green)' };
+    const tierColorMap = { red: 'var(--color-danger)', amber: 'var(--color-warning)', green: 'var(--color-accent)' };
     html += `
-      <div class="card" style="padding: 20px; margin-top: 20px;">
-        <h3 style="font-size: 18px; margin-bottom: 4px;">Your debt payoff order</h3>
-        <p style="font-size: 13px; color: var(--ink-soft); margin-bottom: 14px;">All ${debtOrder.length} debts ranked by priority. Pay minimums on every debt; throw any spare cash at #1 first, then roll into #2.</p>
-        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <div class="card" style="padding: var(--space-5); margin-top: var(--space-5);">
+        <h3 style="font-size: var(--text-lg); margin-bottom: var(--space-1);">Your debt payoff order</h3>
+        <p style="font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3);">All ${debtOrder.length} debts ranked by priority. Pay minimums on every debt; throw any spare cash at #1 first, then roll into #2.</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: var(--text-sm);">
           <thead>
-            <tr style="text-align: left; border-bottom: 1px solid var(--line);">
-              <th style="padding: 8px 6px; width: 40px;">#</th>
-              <th style="padding: 8px 6px;">Debt</th>
-              <th style="padding: 8px 6px;">Tier</th>
-              <th style="padding: 8px 6px; text-align: right;">Balance</th>
-              <th style="padding: 8px 6px; text-align: right;">Rate</th>
-              <th style="padding: 8px 6px; text-align: right;">Min/mo</th>
+            <tr style="text-align: left; border-bottom: 1px solid var(--color-border);">
+              <th style="padding: var(--space-2) 6px; width: 40px;">#</th>
+              <th style="padding: var(--space-2) 6px;">Debt</th>
+              <th style="padding: var(--space-2) 6px;">Tier</th>
+              <th style="padding: var(--space-2) 6px; text-align: right;">Balance</th>
+              <th style="padding: var(--space-2) 6px; text-align: right;">Rate</th>
+              <th style="padding: var(--space-2) 6px; text-align: right;">Min/mo</th>
             </tr>
           </thead>
           <tbody>
             ${debtOrder.map((d, i) => `
-              <tr style="border-bottom: 1px solid #f0ede2;">
+              <tr style="border-bottom: 1px solid var(--color-border);">
                 <td style="padding: 10px 6px; font-weight: 700;">${i + 1}</td>
                 <td style="padding: 10px 6px;">${niceType(d.type)}</td>
-                <td style="padding: 10px 6px;"><span style="display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background: ${tierColorMap[d.tierColor]}22; color: ${tierColorMap[d.tierColor]};">${d.tier}</span></td>
+                <td style="padding: 10px 6px;"><span style="display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600; background: ${tierColorMap[d.tierColor]}22; color: ${tierColorMap[d.tierColor]};">${d.tier}</span></td>
                 <td style="padding: 10px 6px; text-align: right; font-weight: 600;">${fmt(d.balance)}</td>
                 <td style="padding: 10px 6px; text-align: right;">${d.rate}%</td>
-                <td style="padding: 10px 6px; text-align: right; color: var(--ink-soft);">${fmt(d.min)}</td>
+                <td style="padding: 10px 6px; text-align: right; color: var(--color-text-muted);">${fmt(d.min)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1270,7 +1271,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
     `;
   }
 
-  html += `<h3 style="margin: 24px 0 12px; font-size: 18px;">Here's what to tackle first</h3>`;
+  html += `<h3 style="margin: var(--space-6) 0 var(--space-3); font-size: var(--text-lg);">Here's what to tackle first</h3>`;
   moves.forEach((m, i) => {
     const cls = i === 0 ? 'priority-1' : i === 1 ? 'priority-2' : 'priority-3';
     const t = m.title.toLowerCase();
@@ -1294,7 +1295,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
             <h4>${m.title}</h4>
             <div style="text-align:center;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
               <img src="${sticker.src}" alt="${sticker.label}" style="width:88px;height:88px;object-fit:contain;display:block;" loading="lazy">
-              <div style="font-size:10px;font-weight:800;color:var(--ink);letter-spacing:0.05em;background:var(--green-soft);border-radius:999px;padding:3px 10px;white-space:nowrap;">${sticker.label}</div>
+              <div style="font-size:10px;font-weight:800;color:var(--color-text);letter-spacing:0.05em;background:var(--color-accent-soft);border-radius:var(--radius-full);padding:3px 10px;white-space:nowrap;">${sticker.label}</div>
             </div>
           </div>
           <p>${m.body}</p>
@@ -1308,8 +1309,8 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   });
 
   if (flags.length) {
-    html += `<div class="card" style="background: var(--amber-soft); border-color: var(--amber);"><h3 style="font-size: 16px; margin-bottom: 8px;">Flags worth knowing</h3>`;
-    flags.forEach(f => html += `<p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 6px;">${f}</p>`);
+    html += `<div class="card" style="background: var(--color-warning-soft); border-color: var(--color-warning);"><h3 style="font-size: var(--text-md); margin-bottom: var(--space-2);">Flags worth knowing</h3>`;
+    flags.forEach(f => html += `<p style="font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-1);">${f}</p>`);
     html += `</div>`;
   }
 
@@ -1337,29 +1338,73 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   html += `
     <div class="upsell" id="pdf-section">
 
-      <div id="pdf-loading" style="text-align:center;padding:12px;color:var(--ink-soft);font-size:14px;">Loading…</div>
+      <div id="pdf-loading" style="text-align:center;padding:var(--space-3);color:var(--color-text-muted);font-size:var(--text-sm);">Loading…</div>
 
       <!-- Beta open: free PDF download -->
       <div id="pdf-beta-open" style="display:none;">
         <h3>Download your personalised PDF — free (beta)</h3>
         <p style="margin-bottom:14px;">Full plan + 12-month repayment schedule + car loan scenarios. Free for the first 50 beta users.</p>
         <div style="margin-bottom:14px;">
-          <p style="font-size:13px;color:var(--ink-soft);margin-bottom:5px;"><strong id="pdf-spots-num">—</strong> of 50 free spots remaining</p>
-          <div style="height:6px;background:var(--line);border-radius:99px;overflow:hidden;"><div id="pdf-bar" style="height:100%;background:var(--green);border-radius:99px;transition:width .4s;width:0%"></div></div>
+          <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-1);"><strong id="pdf-spots-num">—</strong> of 50 free spots remaining</p>
+          <div style="height:6px;background:var(--color-border);border-radius:var(--radius-full);overflow:hidden;"><div id="pdf-bar" style="height:100%;background:var(--color-accent);border-radius:var(--radius-full);transition:width .4s;width:0%"></div></div>
         </div>
-        <button id="pdf-download-btn" onclick="downloadPdf()" style="padding:14px 28px;background:var(--green);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;">⬇ Download my PDF</button>
-        <div id="pdf-error" style="display:none;padding:14px;background:#fdecea;border-radius:8px;color:var(--red);margin-top:10px;">Something went wrong — please try again.</div>
+        <button id="pdf-download-btn" onclick="downloadPdf()" class="btn btn-primary pdf-download-btn" style="display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download my PDF</button>
+        <div id="pdf-error" style="display:none;padding:var(--space-3);background:var(--color-danger-soft);border-radius:var(--radius-sm);color:var(--color-danger);margin-top:var(--space-2);">Something went wrong — please try again.</div>
       </div>
 
-      <!-- Beta full: waitlist -->
+      <!-- Beta full: paid PDF — A$14 via PayPal (Grand Slam Offer) -->
       <div id="pdf-beta-full" style="display:none;">
-        <h3>Beta is over — join the waitlist</h3>
-        <p style="margin-bottom:14px;">All 50 free spots have been taken. Enter your email and we'll let you know at launch (with an early-bird price).</p>
-        <div style="display:flex;gap:8px;">
-          <input type="email" id="pdf-waitlist-email" placeholder="your@email.com.au" style="flex:1;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;outline:none;" />
-          <button onclick="joinPdfWaitlist()" style="padding:12px 20px;background:var(--ink);color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Join waitlist</button>
+        <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);background:var(--color-accent);color:var(--color-surface);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-2);">
+          <span>★</span> Complete Decision Pack
         </div>
-        <div id="pdf-waitlist-success" style="display:none;padding:14px;background:#f0f7f3;border-radius:8px;color:var(--green-dark);font-weight:600;margin-top:10px;">✓ You're on the list — we'll email you at launch.</div>
+        <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">The 12-Month Aussie Cashflow & Debt Blueprint</h3>
+        <p style="margin-bottom:var(--space-4);color:var(--color-text-muted);font-size:var(--text-sm);">
+          Most Australians overpay by <strong>A$3,000–$8,000</strong> on dealer finance markups and unoptimised interest. Your custom institutional report calculates your exact repayment timeline, dealer vs bank loan balloon traps, and inflation stress tests.
+        </p>
+
+        <!-- Value Stack -->
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);font-size:var(--text-sm);">
+          <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-2);color:var(--color-text);">Everything included in your blueprint today:</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
+            <span>✓ <strong>7-Section Tailored Strategy Report</strong> (PDF)</span>
+            <span style="text-decoration:line-through;">A$149</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
+            <span>✓ <strong>Bonus 1:</strong> Car Dealer Negotiation Script & Checklist</span>
+            <span style="text-decoration:line-through;">A$49</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
+            <span>✓ <strong>Bonus 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet</span>
+            <span style="text-decoration:line-through;">A$39</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);color:var(--color-text-muted);">
+            <span>✓ <strong>Bonus 3:</strong> Set-and-Forget Payday Automation Setup</span>
+            <span style="text-decoration:line-through;">A$29</span>
+          </div>
+          <div style="border-top:1px solid var(--color-border);margin-top:var(--space-2);padding-top:var(--space-2);display:flex;justify-content:space-between;font-weight:var(--weight-bold);color:var(--color-text);">
+            <span>Total Combined Value:</span>
+            <span>A$266</span>
+          </div>
+        </div>
+
+        <!-- Price Anchor Callout -->
+        <div style="text-align:center;margin-bottom:var(--space-4);">
+          <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);">
+            Today Only: A$14.00
+          </div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1);">
+            One-time investment • Instant PDF delivery to your email • 95% off total value
+          </div>
+        </div>
+
+        <div id="paypal-button-container"></div>
+        <div id="pdf-waitlist-success" style="display:none;padding:var(--space-3);background:var(--color-accent-soft);border-radius:var(--radius-sm);color:var(--color-accent-dark);font-weight:var(--weight-semibold);margin-top:var(--space-2);">✓ Payment confirmed — your blueprint and bonuses are on their way.</div>
+
+        <!-- 30-Day Risk Reversal Guarantee -->
+        <div style="margin-top:var(--space-4);padding:var(--space-3);background:var(--color-surface);border:1px solid var(--color-accent);border-left-width:4px;border-radius:var(--radius-sm);font-size:var(--text-xs);color:var(--color-text);">
+          <strong style="color:var(--color-accent-dark);">🛡️ The 30-Day "100x Value" Money-Back Guarantee:</strong>
+          If this custom blueprint doesn't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep the PDF and all 3 bonus toolkits either way.
+        </div>
       </div>
 
     </div>
@@ -1368,13 +1413,13 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   // ─── Car teaser — only when user skipped the car step
   if (state.car.considering !== 'yes') {
     html += `
-      <div style="background:#f0f7f3;border:1px solid #c5ddd0;border-radius:12px;padding:16px 20px;margin-top:20px;display:flex;align-items:center;gap:14px;">
-        <div style="font-size:28px;flex-shrink:0;">🚗</div>
+      <div style="background:var(--color-accent-soft);border:1px solid var(--color-accent);border-radius:var(--radius-lg);padding:var(--space-4) var(--space-5);margin-top:var(--space-5);display:flex;align-items:center;gap:14px;">
+        <div style="font-size:var(--text-2xl);flex-shrink:0;">🚗</div>
         <div>
-          <div style="font-weight:700;font-size:14px;color:#1b262c;margin-bottom:3px;">Planning to buy a car?</div>
-          <div style="font-size:13px;color:#4a5d66;">Re-run the tool and fill out Step 3 to see a dealer vs bank loan comparison — most Australians overpay by A$3,000–8,000 by skipping this.</div>
+          <div style="font-weight:700;font-size:var(--text-sm);color:var(--color-text);margin-bottom:3px;">Planning to buy a car?</div>
+          <div style="font-size:var(--text-sm);color:var(--color-text-muted);">Re-run the tool and fill out Step 3 to see a dealer vs bank loan comparison — most Australians overpay by A$3,000–8,000 by skipping this.</div>
         </div>
-        <button class="btn btn-secondary" onclick="resetApp()" style="flex-shrink:0;font-size:13px;padding:8px 14px;">Re-run →</button>
+        <button class="btn btn-secondary" onclick="resetApp()" style="flex-shrink:0;font-size:var(--text-sm);padding:var(--space-2) var(--space-3);">Re-run →</button>
       </div>
     `;
   }
@@ -1419,20 +1464,24 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
       emailInput.classList.remove('error');
       errEl.classList.remove('show');
       state.email = email;
-      // POST to email endpoint. Falls back gracefully if endpoint is the placeholder.
       try {
-        if (!EMAIL_ENDPOINT.includes('REPLACE_WITH')) {
-          await fetch(EMAIL_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ email, plan: planSummaryText() })
-          });
-        } else {
-          console.log('[Demo] Captured email:', email);
+        const resp = await fetch(EMAIL_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, plan: planSummaryText() }),
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          throw new Error(body.error || 'Failed to send email.');
         }
-      } catch (err) { console.warn(err); }
-      ef.style.display = 'none';
-      document.getElementById('results-email-success').style.display = 'block';
+        ef.style.display = 'none';
+        document.getElementById('results-email-success').style.display = 'block';
+      } catch (err) {
+        console.error('[email-capture]', err);
+        emailInput.classList.add('error');
+        errEl.classList.add('show');
+        errEl.textContent = err.message || 'Something went wrong. Please try again.';
+      }
     });
   }
 }
@@ -1440,9 +1489,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
 /* ───── Sharing ───── */
 // Use SITE_URL when running locally (file://) so share links remain useful for testing.
 function shareUrl() {
-  return (window.location.protocol === 'file:' || window.location.hostname === 'localhost')
-    ? SITE_URL
-    : window.location.href;
+  return window.location.href;
 }
 function planSummaryText() {
   return `My MoneyMoves AU plan: ${state.debts.length} debt(s), buffer ${(state.savings / Math.max(1, (state.expenses + state.debts.reduce((s,d)=>s+d.min,0)))).toFixed(1)} mo. Built mine here:`;
@@ -1479,7 +1526,11 @@ async function initPdfSection() {
     if (count >= BETA_LIMIT_APP) showPdfBetaFull();
     else showPdfBetaOpen(count);
   } catch (e) {
-    showPdfBetaOpen(0);
+    console.error('Firebase beta count failed:', e);
+    const loadingEl = document.getElementById('pdf-loading');
+    if (loadingEl) {
+      loadingEl.innerHTML = '<span style="color:var(--color-danger);font-weight:600;">⚠️ Unable to load beta spots count. Please check your connection or refresh the page.</span>';
+    }
   }
 }
 
@@ -1491,35 +1542,82 @@ function showPdfBetaOpen(count) {
   document.getElementById('pdf-bar').style.width = Math.min(100, (count / BETA_LIMIT_APP) * 100) + '%';
 }
 
-function showPdfBetaFull() {
+async function showPdfBetaFull() {
   document.getElementById('pdf-loading').style.display = 'none';
   document.getElementById('pdf-beta-full').style.display = 'block';
+  // Pre-populate state.email from the signed-in Google account so capture-order
+  // knows where to deliver the PDF without requiring a separate email form.
+  try {
+    const email = Clerk.user?.primaryEmailAddress?.emailAddress;
+    if (email) state.email = email;
+  } catch (_) {}
+  try {
+    await loadPayPalSdk();
+    initPayPalButton();
+  } catch (e) {
+    console.error('[PayPal]', e);
+    const el = document.getElementById('pdf-waitlist-success');
+    if (el) { el.textContent = 'PayPal failed to load — please refresh and try again.'; el.style.display = 'block'; }
+  }
 }
 
+let isGeneratingPdf = false;
+
 async function downloadPdf() {
+  if (isGeneratingPdf) return;
+  isGeneratingPdf = true;
   const btn = document.getElementById('pdf-download-btn');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Generating…';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating…';
+  }
   try {
+    const idToken = Clerk.session ? await Clerk.session.getToken() : null;
     const resp = await fetch('/api/free-report', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
+      },
       body: JSON.stringify({ state }),
     });
     if (!resp.ok) throw new Error('server error');
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'MoneyMoves_AU_Plan.pdf';
-    a.click();
-    URL.revokeObjectURL(url);
-    btn.innerHTML = '✓ Downloaded';
-    btn.style.background = 'var(--green-dark)';
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      // iOS Safari ignores the download attribute — open in a new tab so the user can Share → Save to Files
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (btn) {
+        btn.innerHTML = '✓ Opened — tap Share to save';
+        btn.style.background = 'var(--color-accent-dark)';
+      }
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'MoneyMoves_AU_Plan.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (btn) {
+        btn.innerHTML = '✓ Downloaded';
+        btn.style.background = 'var(--color-accent-dark)';
+      }
+    }
+    // Keep the landing-page spot-counter accurate
+    if (!DEMO_MODE_BETA) {
+      getFirebaseDb().ref('beta/count').transaction(v => (v || 0) + 1);
+    }
   } catch (e) {
     document.getElementById('pdf-error').style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '⬇ Download my PDF';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '⬇ Download my PDF';
+    }
+  } finally {
+    isGeneratingPdf = false;
   }
 }
 
@@ -1527,7 +1625,7 @@ async function joinPdfWaitlist() {
   const emailInput = document.getElementById('pdf-waitlist-email');
   const email = emailInput.value.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    emailInput.style.borderColor = 'var(--red)';
+    emailInput.style.borderColor = 'var(--color-danger)';
     return;
   }
   if (!DEMO_MODE_BETA) {
@@ -1537,7 +1635,33 @@ async function joinPdfWaitlist() {
   document.getElementById('pdf-waitlist-success').style.display = 'block';
 }
 
-/* ───── PayPal checkout (kept for post-beta re-enable) ───── */
+/* ───── PayPal checkout ───── */
+
+// Fetches the live client ID from /api/config (env var), injects the SDK script
+// once, and resolves. Safe to call multiple times — deduplicates via promise cache.
+let _paypalSdkReady = null;
+
+async function loadPayPalSdk() {
+  if (typeof paypal !== 'undefined') return;
+  if (_paypalSdkReady) return _paypalSdkReady;
+  _paypalSdkReady = fetch('/api/config')
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to fetch PayPal configuration from server');
+      return r.json();
+    })
+    .then(({ paypalClientId }) => {
+      if (!paypalClientId) throw new Error('PAYPAL_CLIENT_ID not set on server');
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=AUD&intent=capture`;
+        s.onload  = resolve;
+        s.onerror = () => reject(new Error('PayPal SDK script failed to load'));
+        document.head.appendChild(s);
+      });
+    });
+  return _paypalSdkReady;
+}
+
 function initPayPalButton() {
   const container = document.getElementById('paypal-button-container');
   if (!container || typeof paypal === 'undefined') return;
@@ -1553,21 +1677,64 @@ function initPayPalButton() {
       return (await resp.json()).orderID;
     },
     onApprove: async (data) => {
-      container.innerHTML = '<p style="text-align:center;padding:16px;color:var(--green-dark)">⏳ Processing payment…</p>';
-      const resp = await fetch('/api/capture-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderID: data.orderID, state }),
-      });
-      const result = await resp.json();
-      if (result.success) {
-        container.innerHTML = `<div style="text-align:center;padding:16px;background:var(--green-soft);border-radius:10px;color:var(--green-dark)"><strong>✓ Payment confirmed!</strong><br>Your PDF will be emailed to <strong>${state.email || 'you'}</strong> within 2 minutes.</div>`;
-      } else {
-        container.innerHTML = '<p style="color:var(--red)">Something went wrong. Please try again or email us.</p>';
+      container.innerHTML = '<p style="text-align:center;padding:var(--space-4);color:var(--color-accent-dark)">⏳ Processing payment…</p>';
+      try {
+        const resp = await fetch('/api/capture-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderID: data.orderID, state }),
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          throw new Error(body.error || 'Payment capture failed.');
+        }
+        const result = await resp.json();
+        if (result.success) {
+          let msg = `<div style="text-align:center;padding:var(--space-4);background:var(--color-accent-soft);border-radius:var(--radius-md);color:var(--color-accent-dark)">`;
+          msg += `<strong>✓ Payment confirmed!</strong><br>`;
+          if (result.emailSent) {
+            msg += `Your PDF has been emailed to <strong>${state.email || 'your email'}</strong>.`;
+          } else {
+            msg += `<span style="color:var(--color-danger);font-weight:600;">We could not email your PDF (${result.emailError || 'email error'}).</span>`;
+          }
+          if (result.pdfData) {
+            msg += `<br><br><button id="download-paid-pdf-btn" class="btn btn-primary" style="margin-top:var(--space-2);display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download PDF directly</button>`;
+          }
+          msg += `</div>`;
+          container.innerHTML = msg;
+
+          if (result.pdfData) {
+            document.getElementById('download-paid-pdf-btn').addEventListener('click', () => {
+              try {
+                const byteCharacters = atob(result.pdfData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'MoneyMoves_AU_12Month_Blueprint.pdf';
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                console.error('Error downloading paid PDF:', err);
+                alert('Failed to download PDF. Please contact support.');
+              }
+            });
+          }
+        } else {
+          throw new Error(result.error || 'Payment capture failed.');
+        }
+      } catch (err) {
+        console.error('[PayPal capture]', err);
+        container.innerHTML = `<p style="color:var(--color-danger)">Something went wrong capturing your payment: ${err.message || 'Please contact support.'}</p>`;
       }
     },
     onError: () => {
-      container.innerHTML = '<p style="color:var(--red)">Payment error. Please refresh and try again.</p>';
+      container.innerHTML = '<p style="color:var(--color-danger)">Payment error. Please refresh and try again.</p>';
     },
   }).render('#paypal-button-container');
 }
@@ -1617,30 +1784,63 @@ restoreFromLocal();
 // Seed one empty debt row
 addDebtRow();
 
-/* ── Google Auth ── */
+/* ── Clerk Auth ── */
 const _GOOGLE_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>`;
 document.getElementById('auth-google-btn').innerHTML = _GOOGLE_SVG + ' Continue with Google';
 
-function signInWithGoogleApp() {
-  getFirebaseDb();
-  firebase.app('app').auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+async function signInWithGoogleApp() {
+  const btn   = document.getElementById('auth-google-btn');
+  const errEl = document.getElementById('auth-error-msg');
+  if (btn) btn.disabled = true;
+  if (errEl) errEl.style.display = 'none';
+  try {
+    // Opens Clerk's sign-in modal. If more strategies than Google are enabled
+    // in the Clerk Dashboard, they'll appear here too — restrict to Google
+    // there if a single-button flow matters.
+    await Clerk.openSignIn();
+  } catch (err) {
+    console.error('[auth]', err);
+    if (errEl) { errEl.textContent = 'Sign-in failed — please try again.'; errEl.style.display = 'block'; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
-function signOutApp() { firebase.app('app').auth().signOut(); }
+function signOutApp() { Clerk.signOut(); }
 
-(function initAppAuth() {
-  getFirebaseDb();
-  firebase.app('app').auth().onAuthStateChanged(user => {
+(async function initAppAuth() {
+  await Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
+  function renderAuthState() {
     const overlay = document.getElementById('auth-overlay');
     const navUser = document.getElementById('nav-user');
+    const user = Clerk.user;
     if (user) {
       overlay.style.display = 'none';
-      navUser.innerHTML = `<span>${user.displayName || user.email}</span><button class="nav-signout" onclick="signOutApp()">Sign out</button>`;
+      const name = user.fullName || user.primaryEmailAddress?.emailAddress || '';
+      navUser.innerHTML = `<span>${name}</span><button class="nav-signout" onclick="signOutApp()">Sign out</button>`;
     } else {
       overlay.style.display = 'flex';
       navUser.innerHTML = '';
     }
-  });
+  }
+  renderAuthState();
+  Clerk.addListener(renderAuthState);
 })();
+</script>
+
+<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+function showToast(message, type) {
+  const tc = document.getElementById('toast-container');
+  if (!tc) return;
+  const t = document.createElement('div');
+  const icons = { success: '✓', danger: '⚠', warning: '!' };
+  t.className = 'toast' + (type ? ' toast-' + type : '');
+  t.setAttribute('role', 'status');
+  t.innerHTML = `<span class="toast-icon">${icons[type] || '💬'}</span><span>${message}</span><button class="toast-close" aria-label="Dismiss" onclick="this.parentElement.remove()">✕</button>`;
+  tc.appendChild(t);
+  setTimeout(() => t?.remove(), 5000);
+}
 </script>
 
 </body>

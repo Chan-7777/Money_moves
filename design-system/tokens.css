@@ -1,0 +1,93 @@
+/**
+ * MoneyMoves AU — Design Tokens
+ * Single source of truth. All other CSS must reference these variables only.
+ * Never use raw hex, px font-size, or arbitrary spacing outside this file.
+ */
+
+:root {
+  /* ── Colors ─────────────────────────────────────────── */
+  --color-bg:           #f9f8f6;   /* page background (warm off-white) */
+  --color-surface:      #ffffff;   /* card / input backgrounds */
+  --color-border:       #e8e6e1;   /* default borders & dividers */
+  --color-text:         #1b262c;   /* primary body text */
+  --color-text-muted:   #4a5d66;   /* secondary / helper text */
+
+  --color-accent:       #4a7c59;   /* brand green — use sparingly */
+  --color-accent-dark:  #32583f;   /* accent hover / pressed */
+  --color-accent-soft:  #eef3f0;   /* accent tint (backgrounds) */
+
+  --color-success:      #2d6a4f;   /* confirmed / paid states */
+  --color-success-soft: #dceee4;   /* success tint */
+
+  --color-danger:       #c95d53;   /* errors / destructive */
+  --color-danger-soft:  #fdf2f1;   /* danger tint */
+
+  --color-warning:      #d49547;   /* caution / amber */
+  --color-warning-soft: #fbf5ee;   /* warning tint */
+
+  --color-ui-disabled:  #aaa;      /* disabled control backgrounds */
+
+  /* ── Typography ─────────────────────────────────────── */
+  --font-family:   'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+
+  --text-xs:   12px;   /* labels, hints, disclaimers */
+  --text-sm:   13px;   /* tags, secondary copy */
+  --text-base: 15px;   /* body */
+  --text-md:   16px;   /* inputs, primary UI text */
+  --text-lg:   18px;   /* card headers, section labels */
+  --text-xl:   22px;   /* section titles */
+  --text-2xl:     clamp(24px, 3.5vw, 32px);  /* page section headings */
+  --text-3xl:     clamp(30px, 4.5vw, 44px);  /* hero headline */
+  --text-display: 3rem;                       /* large price / hero number (48px) */
+
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extrabold:800;
+
+  /* ── Spacing scale (base-4) ─────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-15: 60px;
+  --space-16: 64px;
+  --space-18: 72px;
+  --space-20: 80px;
+
+  /* ── Border radius ──────────────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   18px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(13,27,30,0.04);
+  --shadow-sm: 0 1px 0 rgba(0,0,0,0.02), 0 2px 8px rgba(13,27,30,0.05);
+  --shadow-md: 0 1px 0 rgba(0,0,0,0.02), 0 4px 16px rgba(13,27,30,0.07);
+  --shadow-lg: 0 4px 24px rgba(13,27,30,0.10);
+
+  /* ── Transitions ────────────────────────────────────── */
+  --transition-fast:   100ms ease;
+  --transition:        150ms ease;
+  --transition-slow:   250ms ease;
+
+  /* ── Layout ─────────────────────────────────────────── */
+  --container-max:  760px;
+  --nav-height:     56px;
+
+  /* ── Z-index layers ─────────────────────────────────── */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-overlay: 100;
+  --z-modal:   200;
+  --z-toast:   300;
+}

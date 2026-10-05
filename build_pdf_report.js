@@ -52,8 +52,8 @@ const RUNNING_COSTS = {
   waitHold12mo: 0.09,
 };
 
-const COLOR_GREEN = '0A192F'; // Ink (JPM/McKinsey dark blue/black)
-const COLOR_GREEN_DARK = '020C1B';
+const COLOR_NAVY = '0A192F'; // Ink (JPM/McKinsey dark blue/black)
+const COLOR_NAVY_DARK = '020C1B';
 const COLOR_INK = '112233';
 const COLOR_INK_SOFT = '556677';
 const COLOR_RED = 'D64545';
@@ -137,7 +137,7 @@ const p = (text, opts = {}) => new Paragraph({
   spacing: { after: opts.after ?? 120, before: opts.before ?? 0 },
 });
 const h1 = (t) => new Paragraph({
-  children: [serif(t, { size: 36, color: COLOR_GREEN, bold: false })],
+  children: [serif(t, { size: 36, color: COLOR_NAVY, bold: false })],
   heading: HeadingLevel.HEADING_1,
   keepNext: true,
   spacing: { before: 400, after: 200 },
@@ -157,7 +157,7 @@ const callout = (title, bodyText) => new Table({
   rows: [new TableRow({ children: [
     new TableCell({
       children: [
-        new Paragraph({ children: [sans(title, { size: 20, bold: true, color: COLOR_GREEN })], spacing: { after: 80 } }),
+        new Paragraph({ children: [sans(title, { size: 20, bold: true, color: COLOR_NAVY })], spacing: { after: 80 } }),
         new Paragraph({ children: Array.isArray(bodyText) ? bodyText : [sans(bodyText, { size: 20, color: COLOR_INK })], alignment: AlignmentType.JUSTIFIED })
       ],
       shading: { type: ShadingType.CLEAR, color: 'auto', fill: COLOR_GOLD_SOFT },
@@ -198,15 +198,15 @@ function table(rows, opts = {}) {
     rows: rows.map((cells, idx) => new TableRow({
       children: cells.map(c =>
         idx === 0
-          ? cell(c, { bold: true, color: COLOR_GREEN, fill: 'FFFFFF', ...opts.headerCell })
+          ? cell(c, { bold: true, color: COLOR_NAVY, fill: 'FFFFFF', ...opts.headerCell })
           : cell(c, { fill: idx % 2 === 0 ? COLOR_CREAM : 'FFFFFF', ...opts.bodyCell })
       ),
       tableHeader: idx === 0,
     })),
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 12, color: COLOR_GREEN },
-      bottom: { style: BorderStyle.SINGLE, size: 12, color: COLOR_GREEN },
+      top: { style: BorderStyle.SINGLE, size: 12, color: COLOR_NAVY },
+      bottom: { style: BorderStyle.SINGLE, size: 12, color: COLOR_NAVY },
       left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
       right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
       insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: COLOR_LINE },
@@ -240,7 +240,7 @@ function buildCover(state, derived) {
       alignment: AlignmentType.RIGHT,
     }),
     new Paragraph({
-      children: [serif('MoneyMoves', { size: 64, bold: false, color: COLOR_GREEN })],
+      children: [serif('MoneyMoves', { size: 64, bold: false, color: COLOR_NAVY })],
       spacing: { before: 800, after: 0 },
     }),
     new Paragraph({
@@ -389,7 +389,7 @@ function buildDebtRoadmap(state, derived) {
     h3('What this saves you'),
     p([
       arial('Following the avalanche order vs. paying everything down equally saves you approximately ', { size: 22 }),
-      arial(fmt(derived.avalancheSaving), { size: 22, bold: true, color: COLOR_GREEN }),
+      arial(fmt(derived.avalancheSaving), { size: 22, bold: true, color: COLOR_NAVY }),
       arial(' in interest over the life of these debts.', { size: 22 }),
     ]),
     small(`Methodology: avalanche = monthly minimums + recommended extra (${fmt(derived.monthlyAllocation.toDebt)}/mo) applied to highest-rate debt first, rolled to next debt on payoff. Equal-split = same total extra distributed proportionally across all debts.`),
@@ -459,7 +459,7 @@ function buildCarScenarios(state, derived) {
     h3('The headline number'),
     p([
       arial('Choosing the bank loan over the dealer loan saves you ', { size: 22 }),
-      arial(fmt(saving), { size: 22, bold: true, color: COLOR_GREEN }),
+      arial(fmt(saving), { size: 22, bold: true, color: COLOR_NAVY }),
       arial(' over the loan term. Waiting 6-12 months changes the picture only modestly because depreciation eats some of the saving — but it materially reduces your monthly repayment, which improves your buffer resilience.', { size: 22 }),
     ]),
     spacer(160),
@@ -611,6 +611,89 @@ function buildActionChecklist(state, derived) {
   ];
 }
 
+// ─── Bonus Toolkits (Grand Slam Offer Value Stack) ───────────────────────────
+function buildBonusToolkits(state, derived) {
+  return [
+    pageBreak(),
+    h1('Bonus Toolkit 1: Car Dealer Negotiation Script & Finance Checklist'),
+    p('Dealer finance managers are heavily incentivised on interest rate markups, loan administration charges, and insurance add-ons that cost the average Australian A$3,000–$8,000 extra over the loan term. Use these battle-tested scripts and checkpoints when you speak with dealership staff.', { after: 200 }),
+    
+    callout('Dealer Rule #1: Separate Purchase Price from Finance', 'Never negotiate the car price and finance simultaneously. Dealerships lower the sticker price while inflating loan terms, balloon percentages, and fees to recoup profit. Always negotiate the drive-away price first.'),
+    spacer(180),
+
+    h3('Word-for-Word Dealership Scripts'),
+    bullet([
+      arial('When asked "What monthly repayment are you looking for?": ', { size: 20, bold: true }),
+      arial('"I am only negotiating the total drive-away purchase price today. I already have financing pre-approved with my bank at a competitive comparison rate."', { size: 20, italics: true }),
+    ]),
+    bullet([
+      arial('When offered "convenient on-the-spot dealer finance": ', { size: 20, bold: true }),
+      arial('"I am happy to review your offer, but only if your Australian Comparison Rate in writing beats my bank pre-approval by at least 50 basis points, with zero early payout fees or bundled add-ons."', { size: 20, italics: true }),
+    ]),
+    bullet([
+      arial('When dealer adds "dealer prep", "paint protection", or "gap insurance": ', { size: 20, bold: true }),
+      arial('"Under Australian Consumer Law, statutory consumer guarantees already protect me against major mechanical defects. Please remove the extended warranty, doc fees, and protection pack from the drive-away invoice."', { size: 20, italics: true }),
+    ]),
+    spacer(200),
+
+    h3('Dealership Red-Flag Checklist'),
+    bullet([arial('Balloon / Residual Payment Trap: ', { size: 20, bold: true }), arial('A balloon payment over 20-30% keeps monthly payments artificially low, but leaves you in negative equity when the loan matures.', { size: 20 })]),
+    bullet([arial('Comparison Rate vs Headline Rate: ', { size: 20, bold: true }), arial('Never sign based on headline rate alone. The comparison rate includes upfront establishment fees (often A$400–$900) and monthly service fees.', { size: 20 })]),
+    bullet([arial('PPSR Search: ', { size: 20, bold: true }), arial('For any used vehicle, pay A$2.00 directly at ppsr.gov.au to verify the car is unencumbered and has never been written off or stolen.', { size: 20 })]),
+
+    pageBreak(),
+    h1('Bonus Toolkit 2: The 5-Minute Aussie Bank Rate-Cut Phone Script'),
+    p('The "loyalty tax" in Australian banking is well documented: Big 4 and major non-bank lenders routinely charge existing borrowers 0.50%–2.00% more than new customers. A single 5-minute phone call to your lender’s retention department can save hundreds of dollars in interest this year.', { after: 200 }),
+
+    callout('Preparation Before You Dial', 'Look up current introductory or promotional rates on Finder.com.au or Mozo for your debt type (credit card or personal loan). Have your account number, current balance, and current interest rate ready.'),
+    spacer(180),
+
+    h3('Step-by-Step Retention Phone Script'),
+    bullet([
+      arial('Step 1 — Reach the Retention Team: ', { size: 20, bold: true }),
+      arial('When the automated menu asks your reason for calling, say: "Discharge department" or "Account cancellation". Frontline customer support has minimal discount authority; retention teams have designated budget to retain accounts.', { size: 20 }),
+    ]),
+    bullet([
+      arial('Step 2 — Opening Statement: ', { size: 20, bold: true }),
+      arial('"Hi, my name is [Name]. I have held this account for [X] years and my repayment track record has been spotless. I am currently conducting an annual review of my finances and noticed competitor lenders offering variable rates 1.5% below what I am currently paying on this account."', { size: 20, italics: true }),
+    ]),
+    bullet([
+      arial('Step 3 — The Request: ', { size: 20, bold: true }),
+      arial('"Before I submit a balance-transfer application or refinance this balance to another institution this Friday, what rate reduction can you apply to my account today to keep my business?"', { size: 20, italics: true }),
+    ]),
+    bullet([
+      arial('Step 4 — If they say no or offer a trivial 0.10%: ', { size: 20, bold: true }),
+      arial('"I appreciate your position, but given market rates, I need this escalated to a senior retention manager with concession authority before I make my final decision to transfer the facility."', { size: 20, italics: true }),
+    ]),
+    bullet([
+      arial('Step 5 — Ask for Annual Fee Waiver: ', { size: 20, bold: true }),
+      arial('"In addition to lowering the rate, can you also waive the upcoming annual account maintenance fee as a gesture of goodwill for my loyalty?"', { size: 20, italics: true }),
+    ]),
+
+    pageBreak(),
+    h1('Bonus Toolkit 3: Set-and-Forget Payday Automation Architecture'),
+    p('Willpower is a finite resource; automated account structures make good financial choices default. This 4-account architecture uses standard Australian PayID and Osko scheduled transfers to execute your cashflow plan automatically on payday.', { after: 200 }),
+
+    callout('The Golden Rule of Payday Architecture', 'Never spend directly out of the account your salary lands in. On Day +1 after payday, 100% of your income should be automatically swept into dedicated purpose-driven accounts.'),
+    spacer(180),
+
+    h3('The 4-Account Setup (All Zero-Fee Accounts)'),
+    table([
+      ['Account Name', 'Purpose', 'Card?', 'Automated Rule'],
+      ['1. Income Hub', 'Receives salary / income', 'NO', 'Auto-sweeps 100% of funds on payday +1 day'],
+      ['2. Fixed Essentials', 'Rent/mortgage, utilities, food, rego', 'NO', 'Direct debits linked here; holds monthly essentials'],
+      ['3. Emergency Buffer / Debt', 'High-interest savings account', 'NO', 'Receives debt avalanche extra or buffer build amount'],
+      ['4. Guilt-Free Splurge', 'Dining, entertainment, discretionary', 'YES', 'Weekly/fortnightly allowance; spend to zero without guilt'],
+    ]),
+    spacer(200),
+
+    h3('Implementation Checklist'),
+    bullet([arial('Choose low-fee/zero-fee institutions: ', { size: 20, bold: true }), arial('Use Macquarie, ING, UBank, or Up Bank which offer zero monthly fees and instant Osko PayID transfers.', { size: 20 })]),
+    bullet([arial('Time the transfers: ', { size: 20, bold: true }), arial('Schedule your automated sweep transfers for 1 business day AFTER your usual pay day to prevent overdrafts from payroll delays.', { size: 20 })]),
+    bullet([arial('Keep cards off wealth accounts: ', { size: 20, bold: true }), arial('Never connect Apple Pay, Google Wallet, or physical cards to Account 2 (Essentials) or Account 3 (Buffer/Debt). Friction prevents impulsive leakage.', { size: 20 })]),
+  ];
+}
+
 // ─── Derive ──────────────────────────────────────────────────────────────────
 function deriveReportData(state) {
   const debts = state.debts || [];
@@ -719,6 +802,7 @@ function buildReport(state) {
     ...buildOwnershipCost(state, derived),
     ...buildStressTest(state, derived),
     ...buildActionChecklist(state, derived),
+    ...buildBonusToolkits(state, derived),
   ];
 
   return new Document({
@@ -732,7 +816,7 @@ function buildReport(state) {
           run: { size: 32, bold: true, font: 'Arial', color: COLOR_INK },
           paragraph: { spacing: { before: 360, after: 200 }, outlineLevel: 0 } },
         { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true,
-          run: { size: 24, bold: true, font: 'Arial', color: COLOR_GREEN_DARK },
+          run: { size: 24, bold: true, font: 'Arial', color: COLOR_NAVY_DARK },
           paragraph: { spacing: { before: 200, after: 100 }, outlineLevel: 2 } },
       ],
     },
