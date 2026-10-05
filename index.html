@@ -101,7 +101,8 @@
 
   /* Trust bar */
   .trust-bar { padding: var(--space-6) 0; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); background: var(--color-bg); }
-  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-8); text-align: center; }
+  /* auto-fit: the visits tile is hidden until it's meaningful, so the row must reflow to 3 or 4 tiles */
+  .trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: var(--space-8); text-align: center; }
   .trust-stat { font-weight: 800; font-size: var(--text-xl); color: var(--color-text); }
   .trust-label { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-1); }
 
@@ -159,10 +160,11 @@
 
   /* FAQ */
   .faq-item { border-bottom: 1px solid var(--color-border); padding: var(--space-4) 0; }
-  .faq-q { font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; }
-  .faq-a { color: var(--color-text-muted); padding-top: var(--space-2); display: none; font-size: var(--text-base); }
-  .faq-item.open .faq-a { display: block; }
-  .faq-item.open .faq-q::after { content: "−"; }
+  .faq-q { font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; list-style: none; }
+  .faq-q::-webkit-details-marker { display: none; }
+  .faq-q:focus-visible { outline: 2px solid var(--color-accent-dark); outline-offset: 2px; }
+  .faq-a { color: var(--color-text-muted); padding-top: var(--space-2); font-size: var(--text-base); }
+  .faq-item[open] .faq-q::after { content: "−"; }
   .faq-q::after { content: "+"; font-size: var(--text-xl); color: var(--color-text-muted); }
 
   /* Final CTA */
@@ -172,14 +174,6 @@
   }
   .final-cta h2 { color: white; }
   .final-cta .form-card { margin: var(--space-6) auto 0; }
-
-  /* Beta counter */
-  .beta-meta { margin-bottom: var(--space-3); }
-  .spots-text { font-size: var(--text-base); color: var(--color-text-muted); margin-bottom: var(--space-1); }
-  .spots-text strong { color: var(--color-text); }
-  .beta-bar-wrap { height: 7px; background: var(--color-border); border-radius: var(--radius-full); overflow: hidden; }
-  .beta-bar-fill { height: 100%; background: var(--color-accent); border-radius: var(--radius-full); transition: width .5s ease; }
-  #hero-full-state { display: none; }
 
   .google-cta {
     display: flex; align-items: center; justify-content: center; gap: var(--space-2); width: 100%;
@@ -196,8 +190,12 @@
   .disclaimer { max-width: 70ch; margin: 0 auto; font-size: var(--text-xs); line-height: 1.6; }
 
   /* Responsive */
+  .logo, .nav-cta { white-space: nowrap; }
+  @media (max-width: 480px) {
+    .nav-vote { display: none !important; } /* reachable from the footer instead */
+  }
   @media (max-width: 768px) {
-    .trust-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-5); }
+    .trust-grid { gap: var(--space-5); }
     .problem-grid, .steps { grid-template-columns: 1fr; }
     .pricing-wrap { grid-template-columns: 1fr; padding: var(--space-6); }
     .form-row { flex-direction: column; }
@@ -216,7 +214,7 @@
   <div class="container nav-inner">
     <div class="logo">Money<span>Moves</span> AU</div>
     <div style="display:flex;align-items:center;gap:var(--space-2);">
-      <a href="vote.html" style="font-size:var(--text-sm);color:var(--color-text-muted);text-decoration:none;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-weight:600;">🗳 Vote on features</a>
+      <a href="vote.html" class="nav-vote" style="font-size:var(--text-sm);color:var(--color-text-muted);text-decoration:none;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-weight:600;">🗳 Vote on features</a>
       <a href="app.html" class="nav-cta">Try it free →</a>
     </div>
   </div>
@@ -224,33 +222,18 @@
 
 <header class="hero">
   <div class="container">
-    <span class="pill" id="hero-pill">🎉 Beta — reserve one of 50 free PDF spots</span>
+    <span class="pill" id="hero-pill">🎉 Beta — free plan and free PDF</span>
     <h1>Pay down debt, save, or <em>buy that car?</em><br />Get your answer in 2 minutes.</h1>
     <p class="sub">A free decision tool built for Australians. Tell it about your loans, savings and goals — get a ranked action plan in plain English. No financial adviser. No 40-page PDF. No upsell to insurance.</p>
 
     <div class="form-card" style="max-width: 500px;">
 
-      <!-- Beta open -->
-      <div id="hero-open-state">
-        <div class="beta-meta">
-          <p class="spots-text"><strong id="hero-spots-num">—</strong> of 50 free PDF spots remaining</p>
-          <div class="beta-bar-wrap"><div class="beta-bar-fill" id="hero-bar" style="width:0%"></div></div>
-        </div>
+      <div>
         <a href="app.html" class="google-cta">
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
           Sign in with Google — get your free plan
         </a>
-        <p class="micro" style="margin-top:var(--space-3);">Sign in once · Free plan on screen · Beta users get the PDF free</p>
-      </div>
-
-      <!-- Beta full -->
-      <div id="hero-full-state">
-        <p style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-2);">🔒 Beta PDF spots are full — 50/50 taken.</p>
-        <p style="font-size:var(--text-base);color:var(--color-text-muted);margin-bottom:var(--space-4);">The free tool is still open — sign in with Google to run your plan on screen.</p>
-        <a href="app.html" class="google-cta">
-          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
-          Sign in with Google — try the free tool
-        </a>
+        <p class="micro" style="margin-top:var(--space-3);">Sign in once · Free plan on screen · Free PDF of your plan</p>
       </div>
 
     </div>
@@ -263,7 +246,7 @@
     <div><div class="trust-stat">2 min</div><div class="trust-label">to your action plan</div></div>
     <div><div class="trust-stat">$0</div><div class="trust-label">to use the calculator</div></div>
     <div><div class="trust-stat">100%</div><div class="trust-label">Australian-focused</div></div>
-    <div><div class="trust-stat" id="visitor-count">—</div><div class="trust-label">Australians used this</div></div>
+    <div hidden><div class="trust-stat" id="visitor-count">—</div><div class="trust-label">visits so far</div></div>
   </div>
 </div>
 
@@ -310,7 +293,7 @@
       <div class="step">
         <div class="step-num">3</div>
         <h3>Get your action plan</h3>
-        <p>Plain-English, step-by-step. Free plan on screen. Beta users also get a personalised PDF emailed to them — free.</p>
+        <p>Plain-English, step-by-step. Free plan on screen, plus a free personalised PDF to keep.</p>
       </div>
     </div>
   </div>
@@ -341,7 +324,7 @@
             <li><strong>🛡️ 30-Day 100x Guarantee:</strong> Uncovers at least A$1,400 in savings or prompt 100% refund</li>
           </ul>
         </div>
-        <a href="#signup" class="price-cta" style="background:var(--color-accent);color:var(--color-surface);text-align:center;">Claim beta free spot or start co-pilot →</a>
+        <a href="app.html" class="price-cta" style="background:var(--color-accent);color:var(--color-surface);text-align:center;">Start with your free plan →</a>
       </div>
 
       <!-- Anchor: One-Off Full Strategy Dossier & Audit (A$149) -->
@@ -360,7 +343,7 @@
             <li><strong>Standard 14-Day Review:</strong> 100% satisfaction assurance</li>
           </ul>
         </div>
-        <a href="#signup" class="price-cta" style="background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border);text-align:center;">Claim beta free spot →</a>
+        <a href="app.html" class="price-cta" style="background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border);text-align:center;">Start with your free plan →</a>
       </div>
 
     </div>
@@ -379,11 +362,11 @@
     <div class="section-head">
       <h2>Frequently asked</h2>
     </div>
-    <div class="faq-item"><div class="faq-q">Is this financial advice?</div><div class="faq-a">No. MoneyMoves AU is a general educational tool. It is not personal financial advice and is not a substitute for a licensed Australian financial adviser. Use the output as a starting point for your own thinking or a conversation with a professional.</div></div>
-    <div class="faq-item"><div class="faq-q">Do I need to give you my bank details?</div><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></div>
-    <div class="faq-item"><div class="faq-q">Is my information private?</div><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></div>
-    <div class="faq-item"><div class="faq-q">Is the tool live now?</div><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. Sign in with Google, run your plan — no bank details, no financial adviser required.</div></div>
-    <div class="faq-item"><div class="faq-q">Why charge for the PDF Blueprint?</div><div class="faq-a">It keeps the free tool genuinely free, with zero ads and zero lender kickbacks. While the web app is completely free, users can unlock the Core Strategy Report for A$39, or the Complete Blueprint for A$59 with 3 negotiation toolkits (saving A$3,000–$8,000 on car finance and loan interest). Plus, the Complete tier is backed by our 30-Day "100x Value" Money-Back Guarantee: if it doesn't uncover at least A$1,400 in potential savings, you get a prompt 100% refund.</div></div>
+    <details class="faq-item"><summary class="faq-q">Is this financial advice?</summary><div class="faq-a">No. MoneyMoves AU is a general educational tool. It is not personal financial advice and is not a substitute for a licensed Australian financial adviser. Use the output as a starting point for your own thinking or a conversation with a professional.</div></details>
+    <details class="faq-item"><summary class="faq-q">Do I need to give you my bank details?</summary><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></details>
+    <details class="faq-item"><summary class="faq-q">Is my information private?</summary><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></details>
+    <details class="faq-item"><summary class="faq-q">Is the tool live now?</summary><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. Sign in with Google, run your plan — no bank details, no financial adviser required.</div></details>
+    <details class="faq-item"><summary class="faq-q">Why charge for the PDF Blueprint?</summary><div class="faq-a">It keeps the free tool genuinely free, with zero ads and zero lender kickbacks. While the web app is completely free, users can unlock the Core Strategy Report for A$39, or the Complete Blueprint for A$59 with 3 negotiation toolkits (saving A$3,000–$8,000 on car finance and loan interest). Plus, the Complete tier is backed by our 30-Day "100x Value" Money-Back Guarantee: if it doesn't uncover at least A$1,400 in potential savings, you get a prompt 100% refund.</div></details>
   </div>
 </section>
 
@@ -391,29 +374,15 @@
   <div class="container">
     <div class="final-cta">
       <h2>Ready? Get your plan in 2 minutes.</h2>
-      <p style="opacity: 0.9; margin-top: var(--space-2);">Free to use. Sign in with Google. No bank details. Beta users get the PDF free.</p>
+      <p style="opacity: 0.9; margin-top: var(--space-2);">Free to use. Sign in with Google. No bank details. The PDF is free too.</p>
       <div class="form-card" style="margin: var(--space-6) auto 0;">
 
-        <!-- Beta open -->
-        <div id="footer-open-state">
-          <div class="beta-meta">
-            <p class="spots-text"><strong id="footer-spots-num">—</strong> of 50 free PDF spots remaining</p>
-            <div class="beta-bar-wrap"><div class="beta-bar-fill" id="footer-bar" style="width:0%"></div></div>
-          </div>
+        <div>
           <a href="app.html" class="google-cta">
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
             Sign in with Google — get your free plan
           </a>
           <p class="micro" style="margin-top:var(--space-2);">Sign in once · free plan instantly</p>
-        </div>
-
-        <!-- Beta full -->
-        <div id="footer-full-state" style="display:none;">
-          <p style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-3);">🔒 Beta PDF spots are full — 50/50 taken.</p>
-          <a href="app.html" class="google-cta">
-            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
-            Sign in with Google — try the free tool
-          </a>
         </div>
 
       </div>
@@ -424,7 +393,7 @@
 <footer>
   <div class="container">
     <p><strong>MoneyMoves AU</strong> · Built for Australians, by people who hate jargon</p>
-    <p style="margin-top: var(--space-3);">© 2026 MoneyMoves AU · <a href="privacy.html" style="color: var(--color-text-muted);">Privacy</a> · <a href="terms.html" style="color: var(--color-text-muted);">Terms</a></p>
+    <p style="margin-top: var(--space-3);">© 2026 MoneyMoves AU · <a href="privacy.html" style="color: var(--color-text-muted);">Privacy</a> · <a href="terms.html" style="color: var(--color-text-muted);">Terms</a> · <a href="vote.html" style="color: var(--color-text-muted);">Vote on features</a></p>
     <p class="disclaimer" style="margin-top:var(--space-4);">
       <strong>Important:</strong> MoneyMoves AU provides general information and educational tools only. It is not personal financial product advice and does not take into account your objectives, financial situation, or needs. Before acting on any output, consider whether it is appropriate for you and consider speaking to a licensed Australian financial adviser. Past performance is not indicative of future results.
     </p>
@@ -432,53 +401,24 @@
 </footer>
 
 <script>
-  const BETA_LIMIT = 50;
-  const DEMO_BETA_COUNT = 12; // shown when Firebase not connected
-
-  // FAQ accordion
-  document.querySelectorAll('.faq-item').forEach(item => {
-    item.querySelector('.faq-q').addEventListener('click', () => item.classList.toggle('open'));
-  });
-
-  function updateBetaUI(count) {
-    const remaining = Math.max(0, BETA_LIMIT - count);
-    const pct = Math.min(100, (count / BETA_LIMIT) * 100);
-    const isFull = count >= BETA_LIMIT;
-
-    // Hero
-    const heroSpots = document.getElementById('hero-spots-num');
-    const heroBar   = document.getElementById('hero-bar');
-    if (heroSpots) heroSpots.textContent = remaining;
-    if (heroBar)   heroBar.style.width = pct + '%';
-    document.getElementById('hero-open-state').style.display = isFull ? 'none' : 'block';
-    document.getElementById('hero-full-state').style.display = isFull ? 'block' : 'none';
-
-    // Footer
-    const footerSpots = document.getElementById('footer-spots-num');
-    const footerBar   = document.getElementById('footer-bar');
-    if (footerSpots) footerSpots.textContent = remaining;
-    if (footerBar)   footerBar.style.width = pct + '%';
-    document.getElementById('footer-open-state').style.display = isFull ? 'none' : 'block';
-    document.getElementById('footer-full-state').style.display = isFull ? 'block' : 'none';
-
+  // The stat counts page visits, not people who used the tool — label it honestly
+  // and only show it once the number is meaningful social proof.
+  const VISITS_MIN_TO_SHOW = 100;
+  function updateVisits(n) {
+    const vc = document.getElementById('visitor-count');
+    if (!vc) return;
+    const tile = vc.parentElement;
+    tile.hidden = n < VISITS_MIN_TO_SHOW;
+    vc.textContent = n.toLocaleString('en-AU');
   }
 
-  // Init Firebase + live beta counter
+  // Init Firebase visitor counter
   if (DEMO_MODE) {
-    updateBetaUI(DEMO_BETA_COUNT);
-    const vc = document.getElementById('visitor-count');
-    if (vc) vc.textContent = DEMO_BETA_COUNT.toLocaleString('en-AU');
+    updateVisits(0);
   } else {
     firebase.initializeApp(FIREBASE_CONFIG);
-    firebase.database().ref('beta/count').on('value', snap => {
-      updateBetaUI(snap.val() || 0);
-    });
-    // Visitor counter (separate from beta)
     firebase.database().ref('visitors').transaction(v => (v || 0) + 1);
-    firebase.database().ref('visitors').on('value', snap => {
-      const vc = document.getElementById('visitor-count');
-      if (vc) vc.textContent = (snap.val() || 0).toLocaleString('en-AU');
-    });
+    firebase.database().ref('visitors').on('value', snap => updateVisits(snap.val() || 0));
   }
 </script>
 

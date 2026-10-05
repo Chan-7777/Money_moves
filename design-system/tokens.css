@@ -8,7 +8,8 @@
   /* ── Colors ─────────────────────────────────────────── */
   --color-bg:           #f9f8f6;   /* page background (warm off-white) */
   --color-surface:      #ffffff;   /* card / input backgrounds */
-  --color-border:       #e8e6e1;   /* default borders & dividers */
+  --color-border:       #e8e6e1;   /* decorative borders & dividers */
+  --color-border-input: #8a9499;   /* form control borders — 3:1 on white (WCAG 1.4.11) */
   --color-text:         #1b262c;   /* primary body text */
   --color-text-muted:   #4a5d66;   /* secondary / helper text */
 
@@ -19,7 +20,7 @@
   --color-success:      #2d6a4f;   /* confirmed / paid states */
   --color-success-soft: #dceee4;   /* success tint */
 
-  --color-danger:       #c95d53;   /* errors / destructive */
+  --color-danger:       #b3443a;   /* errors / destructive — 5.5:1 on white (was #c95d53, 4.1:1) */
   --color-danger-soft:  #fdf2f1;   /* danger tint */
 
   --color-warning:      #d49547;   /* caution / amber */

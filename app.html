@@ -14,10 +14,6 @@
 </script>
 <!-- PayPal SDK loaded on demand via loadPayPalSdk() — client ID served from /api/config -->
 
-<!-- Firebase — beta counter + waitlist (RTDB only; auth moved to Clerk below) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
 <!-- ════════════════════════════════════════════════════════════
      CLERK SETUP — 2 minutes, free Hobby plan covers all of this
      ════════════════════════════════════════════════════════════
@@ -41,27 +37,6 @@
   src="https://sharp-garfish-1060.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
   type="text/javascript"
 ></script>
-<script>
-  const FIREBASE_CONFIG_APP = {
-    apiKey:            "AIzaSyDAP8vdCkcdATOt69ntxg1iINPtdNShjMk",
-    authDomain:        "moneymoves-au.firebaseapp.com",
-    databaseURL:       "https://moneymoves-au-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId:         "moneymoves-au",
-    storageBucket:     "moneymoves-au.firebasestorage.app",
-    messagingSenderId: "236144878356",
-    appId:             "1:236144878356:web:5c21dfc4730b5a32e95801",
-  };
-  const DEMO_MODE_BETA = Object.values(FIREBASE_CONFIG_APP).some(v => v.includes('REPLACE_WITH'));
-  const BETA_LIMIT_APP = 50;
-  let _firebaseAppInited = false;
-  function getFirebaseDb() {
-    if (!_firebaseAppInited) {
-      firebase.initializeApp(FIREBASE_CONFIG_APP, 'app');
-      _firebaseAppInited = true;
-    }
-    return firebase.app('app').database();
-  }
-</script>
 
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
@@ -91,6 +66,10 @@
   .badge { font-size: var(--text-xs); padding: 3px var(--space-2); background: var(--color-warning); color: var(--color-text); border-radius: var(--radius-full); font-weight: 700; margin-left: var(--space-2); }
 
   header.intro { padding: var(--space-12) 0 var(--space-6); }
+  /* After step 1 only the progress bar stays — the form moves up instead of repeating the intro. */
+  header.intro.compact { padding-top: var(--space-6); padding-bottom: 0; }
+  header.intro.compact > .container > :not(.progress) { display: none !important; }
+  .debt-row .hecs-hint { font-size: var(--text-sm); color: var(--color-text-muted); }
   h1 { font-size: var(--text-2xl); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: var(--space-3); }
   .lede { font-size: var(--text-md); color: var(--color-text-muted); max-width: 60ch; }
 
@@ -122,7 +101,7 @@
   }
   input[type="number"], input[type="text"], input[type="email"], select {
     width: 100%; padding: var(--space-3) var(--space-3); padding-left: 30px;
-    border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-md);
+    border: 1px solid var(--color-border-input); border-radius: var(--radius-md); font-size: var(--text-md);
     font-family: inherit; background: var(--color-bg); outline: none; -moz-appearance: textfield;
   }
   input[type="number"]::-webkit-outer-spin-button,
@@ -139,8 +118,17 @@
   .radio-pill {
     padding: 10px var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-full);
     cursor: pointer; font-size: var(--text-sm); font-weight: 600; background: var(--color-surface); user-select: none;
+    font-family: inherit; color: var(--color-text); min-height: 44px;
   }
-  .radio-pill.selected { background: var(--color-text); color: var(--color-surface); border-color: var(--color-text); }
+  .radio-pill.selected { background: var(--color-accent-dark); color: var(--color-surface); border-color: var(--color-accent-dark); }
+  /* Keyboard focus ring for every interactive control (pills, tier cards, buttons, summary) */
+  .radio-pill:focus-visible, .tier-card:focus-visible, .btn:focus-visible, .btn-add:focus-visible,
+  .btn-icon:focus-visible, .share-btn:focus-visible, summary:focus-visible, a:focus-visible {
+    outline: 2px solid var(--color-accent-dark); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+  }
 
   /* Help icon + tooltip */
   .help {
@@ -205,7 +193,7 @@
   .result-hero.green { background: var(--color-accent-soft); border: 1px solid var(--color-accent); }
   .result-hero.amber { background: var(--color-warning-soft); border: 1px solid var(--color-warning); }
   .result-hero.red { background: var(--color-danger-soft); border: 1px solid var(--color-danger); }
-  .result-hero h3 { font-size: var(--text-xl); margin-bottom: var(--space-1); }
+  .result-hero h2 { font-size: var(--text-xl); margin-bottom: var(--space-1); }
 
   .move {
     display: flex; gap: var(--space-4); padding: var(--space-5); border: 1px solid var(--color-border);
@@ -314,8 +302,14 @@
      v0.5 UI POLISH — overrides for issues raised in audit
      ───────────────────────────────────────────────────────── */
   /* #1 BETA badge: align with wordmark baseline */
-  .logo { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .logo { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+  .logo .wordmark { color: var(--color-text); }
+  .logo .wordmark span { color: var(--color-accent); }
   .badge { margin-left: 0; line-height: 1; }
+  .nav-start-over { white-space: nowrap; }
+  @media (max-width: 480px) {
+    .nav-vote { display: none !important; } /* reachable from the footer instead */
+  }
   /* #2 Start-over needs button affordance */
   .nav-start-over {
     color: var(--color-text-muted); font-size: var(--text-sm); text-decoration: none;
@@ -336,8 +330,6 @@
   }
   /* #8 radio pills: matched min-width per pair */
   .radio-pill { min-width: 140px; text-align: center; }
-  /* #9 Step 4 priority chips: 3+2 centred grid so 'Get the car' doesn't orphan */
-  #goal-group { justify-content: center; }
   /* #10 eyebrow labels: more readable letter-spacing */
   .summary-tile .l { font-size: var(--text-xs); letter-spacing: 0.08em; }
   /* #11 buffer status — semantic colour */
@@ -393,8 +385,8 @@
   }
   /* #9 Step 4 priority chips: 5-up grid with centred wrap */
   #goal-group {
-    display: flex !important; flex-wrap: wrap; justify-content: center;
-    gap: 10px; margin: 0 auto;
+    display: flex !important; flex-wrap: wrap; justify-content: flex-start;
+    gap: 10px;
   }
   #goal-group .radio-pill { flex: 0 1 auto; min-width: 130px; }
   /* #13 trim move card body density: compact 'Why' as collapsible <details> */
@@ -497,9 +489,9 @@
 
 <nav>
   <div class="container nav-inner">
-    <div class="logo">Money<span>Moves</span> AU<span class="badge">BETA</span></div>
+    <div class="logo"><span class="wordmark">Money<span>Moves</span> AU</span><span class="badge">BETA</span></div>
     <div style="display:flex;align-items:center;gap:var(--space-3);">
-      <a href="vote.html" style="font-size:var(--text-sm);color:var(--color-text-muted);text-decoration:none;padding:var(--space-1) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-weight:600;transition:border-color .15s,color .15s;" onmouseover="this.style.color='var(--color-text)';this.style.borderColor='var(--color-text)'" onmouseout="this.style.color='var(--color-text-muted)';this.style.borderColor='var(--color-border)'">🗳 Vote on features</a>
+      <a href="vote.html" class="nav-vote" style="font-size:var(--text-sm);color:var(--color-text-muted);text-decoration:none;padding:var(--space-1) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-weight:600;transition:border-color .15s,color .15s;" onmouseover="this.style.color='var(--color-text)';this.style.borderColor='var(--color-text)'" onmouseout="this.style.color='var(--color-text-muted)';this.style.borderColor='var(--color-border)'">🗳 Vote on features</a>
       <a href="#" class="nav-start-over" onclick="resetApp(); return false;">Start over</a>
       <span class="nav-user" id="nav-user"></span>
     </div>
@@ -535,37 +527,37 @@
     <div class="field" style="margin-bottom:var(--space-6);">
       <label>How do you track your pay and bills?</label>
       <div class="radio-group" id="pay-cycle-group">
-        <div class="radio-pill selected" data-val="monthly" onclick="selectPayCycle(this)">Monthly</div>
-        <div class="radio-pill" data-val="fortnightly" onclick="selectPayCycle(this)">Fortnightly</div>
-        <div class="radio-pill" data-val="weekly" onclick="selectPayCycle(this)">Weekly</div>
+        <button type="button" class="radio-pill selected" data-val="monthly" onclick="selectPayCycle(this)">Monthly</button>
+        <button type="button" class="radio-pill" data-val="fortnightly" onclick="selectPayCycle(this)">Fortnightly</button>
+        <button type="button" class="radio-pill" data-val="weekly" onclick="selectPayCycle(this)">Weekly</button>
       </div>
     </div>
 
     <div class="field">
       <label for="income">Your <span class="cycle-label">monthly</span> paycheque <span class="hint">(after tax)</span></label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="income" placeholder="e.g. 6500" min="0" onfocus="this.select()" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" id="income" placeholder="e.g. 6500" min="0" onfocus="this.select()" /></div>
       <div class="field-error" id="income-err">Please enter your take-home pay.</div>
     </div>
 
     <div class="field">
       <label for="expenses">Regular living costs <span class="hint">(rent or mortgage, groceries, power, phone, fuel, insurance, rego — not loan repayments)</span></label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="expenses" placeholder="e.g. 3800" min="0" onfocus="this.select()" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" id="expenses" placeholder="e.g. 3800" min="0" onfocus="this.select()" /></div>
       <div class="field-error" id="expenses-err">Please enter your living costs (zero is unlikely).</div>
     </div>
 
     <div class="field">
       <label>Do you rent, own with a mortgage, or live with family?</label>
       <div class="radio-group" style="margin-bottom:var(--space-4);">
-        <div class="radio-pill selected" onclick="selectHousing(this)">Renting</div>
-        <div class="radio-pill" onclick="selectHousing(this)">Mortgage</div>
-        <div class="radio-pill" onclick="selectHousing(this)">With family / Board</div>
-        <div class="radio-pill" onclick="selectHousing(this)">Own outright</div>
+        <button type="button" class="radio-pill selected" onclick="selectHousing(this)">Renting</button>
+        <button type="button" class="radio-pill" onclick="selectHousing(this)">Mortgage</button>
+        <button type="button" class="radio-pill" onclick="selectHousing(this)">With family / Board</button>
+        <button type="button" class="radio-pill" onclick="selectHousing(this)">Own outright</button>
       </div>
     </div>
 
     <div class="field">
       <label for="savings">Emergency savings you can access quickly <span class="hint">(offset account, high-interest savings)</span></label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="savings" placeholder="e.g. 3000" min="0" onfocus="this.select()" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" id="savings" placeholder="e.g. 3000" min="0" onfocus="this.select()" /></div>
       <div class="field-error" id="savings-err">If you have no savings, enter 0 — leaving it blank skips important logic.</div>
     </div>
 
@@ -609,8 +601,8 @@
     <div class="field">
       <label>Are you looking at buying a car in the next 6 months?</label>
       <div class="radio-group">
-        <div class="radio-pill selected" data-val="no" onclick="selectCar(this)">No, not now</div>
-        <div class="radio-pill" data-val="yes" onclick="selectCar(this)">Yes, I'm looking</div>
+        <button type="button" class="radio-pill selected" data-val="no" onclick="selectCar(this)">No, not now</button>
+        <button type="button" class="radio-pill" data-val="yes" onclick="selectCar(this)">Yes, I'm looking</button>
       </div>
     </div>
 
@@ -618,22 +610,22 @@
       <div class="row-2">
         <div class="field">
           <label>Car price</label>
-          <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="car-price" placeholder="35000" min="0" /></div>
+          <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" id="car-price" placeholder="35000" min="0" /></div>
         </div>
         <div class="field">
           <label>Cash deposit you'll put in</label>
-          <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="car-deposit" placeholder="5000" min="0" /></div>
+          <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" id="car-deposit" placeholder="5000" min="0" /></div>
         </div>
       </div>
       <div class="field-error" id="car-deposit-err" style="margin-top:-8px; margin-bottom:var(--space-3);">Your deposit can't be more than the car price. Please check those numbers.</div>
       <div class="row-2">
         <div class="field">
           <label>Dealer / finance company rate</label>
-          <div class="input-wrap no-prefix"><input type="number" id="car-dealer-rate" placeholder="9.5" step="0.1" min="0" /><span class="suffix">% p.a.</span></div>
+          <div class="input-wrap no-prefix"><input type="number" inputmode="decimal" id="car-dealer-rate" placeholder="9.5" step="0.01" min="0" /><span class="suffix">% p.a.</span></div>
         </div>
         <div class="field">
           <label>Best bank/credit union rate you've found</label>
-          <div class="input-wrap no-prefix"><input type="number" id="car-bank-rate" placeholder="7.2" step="0.1" min="0" /><span class="suffix">% p.a.</span></div>
+          <div class="input-wrap no-prefix"><input type="number" inputmode="decimal" id="car-bank-rate" placeholder="7.2" step="0.01" min="0" /><span class="suffix">% p.a.</span></div>
         </div>
       </div>
       <div class="field">
@@ -652,13 +644,13 @@
           <span class="help" tabindex="0" aria-label="Help" data-tip="A balloon is a large lump-sum due at the end of the loan — typically 30–50% of the car's value. It makes monthly repayments look cheaper, but you'll either need to pay it in cash, refinance it, or sell the car. Common in dealer/novated leases.">?</span>
         </label>
         <div class="radio-group">
-          <div class="radio-pill selected" data-val="no" onclick="selectBalloon(this)">No</div>
-          <div class="radio-pill" data-val="yes" onclick="selectBalloon(this)">Yes</div>
+          <button type="button" class="radio-pill selected" data-val="no" onclick="selectBalloon(this)">No</button>
+          <button type="button" class="radio-pill" data-val="yes" onclick="selectBalloon(this)">Yes</button>
         </div>
       </div>
       <div class="field" id="balloon-amount-field" style="display: none;">
         <label>Balloon amount <span class="hint">(approximate $ owed at end of loan)</span></label>
-        <div class="input-wrap"><span class="prefix">A$</span><input type="number" id="car-balloon-amount" placeholder="e.g. 12000" min="0" /></div>
+        <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" id="car-balloon-amount" placeholder="e.g. 12000" min="0" /></div>
       </div>
       <div class="field">
         <label>
@@ -666,8 +658,8 @@
           <span class="help" tabindex="0" aria-label="Help" data-tip="A novated lease is a salary-packaging arrangement where your employer pays for the car (and often running costs) from your pre-tax salary. Common in Australia. EVs under the Luxury Car Tax fuel-efficient threshold may qualify for an FBT exemption, which can be tax-advantageous. Always get advice from a salary-packaging specialist or tax adviser — eligibility and benefits depend on your employer, vehicle, and personal circumstances.">?</span>
         </label>
         <div class="radio-group">
-          <div class="radio-pill selected" data-val="no" onclick="selectNovated(this)">No / not sure</div>
-          <div class="radio-pill" data-val="yes" onclick="selectNovated(this)">Yes, I'm exploring this</div>
+          <button type="button" class="radio-pill selected" data-val="no" onclick="selectNovated(this)">No / not sure</button>
+          <button type="button" class="radio-pill" data-val="yes" onclick="selectNovated(this)">Yes, I'm exploring this</button>
         </div>
       </div>
     </div>
@@ -689,18 +681,18 @@
     <div class="field">
       <label>Top priority</label>
       <div class="radio-group" id="goal-group">
-        <div class="radio-pill selected" data-val="balance" onclick="selectGoal(this)">A balanced plan</div>
-        <div class="radio-pill" data-val="debt" onclick="selectGoal(this)">Paying off debt</div>
-        <div class="radio-pill" data-val="safety" onclick="selectGoal(this)">Building a buffer</div>
-        <div class="radio-pill" data-val="invest" onclick="selectGoal(this)">Start investing</div>
-        <div class="radio-pill" data-val="home" onclick="selectGoal(this)">Saving for a home</div>
-        <div class="radio-pill" data-val="family" onclick="selectGoal(this)">Young family</div>
+        <button type="button" class="radio-pill selected" data-val="balance" onclick="selectGoal(this)">A balanced plan</button>
+        <button type="button" class="radio-pill" data-val="debt" onclick="selectGoal(this)">Paying off debt</button>
+        <button type="button" class="radio-pill" data-val="safety" onclick="selectGoal(this)">Building a buffer</button>
+        <button type="button" class="radio-pill" data-val="invest" onclick="selectGoal(this)">Start investing</button>
+        <button type="button" class="radio-pill" data-val="home" onclick="selectGoal(this)">Saving for a home</button>
+        <button type="button" class="radio-pill" data-val="family" onclick="selectGoal(this)">Young family</button>
       </div>
     </div>
 
-    <div style="margin-top:var(--space-6); display:flex; flex-direction:column; gap:var(--space-2);">
-      <button class="btn btn-primary" id="submit-btn" onclick="generatePlan()" style="width: 100%; font-size: var(--text-md); padding: var(--space-4) var(--space-6);">See my money plan</button>
-      <button class="btn btn-secondary" onclick="prevStep(4)" style="width: 100%;">← Back</button>
+    <div class="actions" style="margin-top:var(--space-6);">
+      <button class="btn btn-secondary" onclick="prevStep(4)">← Back</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="generatePlan()">See my money plan</button>
     </div>
   </div>
 </div>
@@ -714,7 +706,7 @@
 
 <footer>
   <div class="container">
-    MoneyMoves AU · Beta · Based on common Australian money priorities.<br/>
+    MoneyMoves AU · Beta · Based on common Australian money priorities. · <a href="vote.html" style="color: inherit;">Vote on features</a><br/>
     This is guidance, not financial advice.
   </div>
 </footer>
@@ -762,15 +754,31 @@ function showStep(n) {
     if (i === n - 1) p.classList.add('active');
   });
   currentStep = n;
+  // The intro copy only matters before the user starts; on the results screen the plan replaces it entirely.
+  const intro = document.querySelector('header.intro');
+  intro.classList.toggle('compact', n > 1);
+  intro.hidden = n === 5;
+  syncPillState();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+/* Pills are toggle buttons: expose the selected one to assistive tech. */
+function syncPillState() {
+  document.querySelectorAll('.radio-pill').forEach(p => p.setAttribute('aria-pressed', p.classList.contains('selected') ? 'true' : 'false'));
+}
+document.addEventListener('click', e => { if (e.target.closest('.radio-pill')) syncPillState(); });
 
 /* Inline validation helper */
 function showFieldError(inputId, errId, show) {
   const inp = document.getElementById(inputId);
   const err = document.getElementById(errId);
-  if (show) { inp.classList.add('error'); err.classList.add('show'); }
-  else { inp.classList.remove('error'); err.classList.remove('show'); }
+  if (show) {
+    inp.classList.add('error'); err.classList.add('show');
+    inp.setAttribute('aria-invalid', 'true'); inp.setAttribute('aria-describedby', errId);
+  } else {
+    inp.classList.remove('error'); err.classList.remove('show');
+    inp.removeAttribute('aria-invalid'); inp.removeAttribute('aria-describedby');
+  }
 }
 
 function nextStep(from) {
@@ -782,7 +790,11 @@ function nextStep(from) {
     showFieldError('income', 'income-err', incomeVal === '' || parseFloat(incomeVal) <= 0); if (incomeVal === '' || parseFloat(incomeVal) <= 0) bad = true;
     showFieldError('expenses', 'expenses-err', expensesVal === ''); if (expensesVal === '') bad = true;
     showFieldError('savings', 'savings-err', savingsVal === ''); if (savingsVal === '') bad = true;
-    if (bad) return;
+    if (bad) {
+      const firstInvalid = document.querySelector('.step.active input[aria-invalid="true"]');
+      if (firstInvalid) firstInvalid.focus();
+      return;
+    }
     let inc = parseFloat(incomeVal);
     let exp = parseFloat(expensesVal);
     if (currentCycle === 'fortnightly') { inc = inc * 26 / 12; exp = exp * 26 / 12; }
@@ -857,10 +869,11 @@ function addDebtRow() {
   const list = document.getElementById('debts-list');
   const row = document.createElement('div');
   row.className = 'debt-row';
+  const n = list.querySelectorAll('.debt-row').length + 1;
   row.innerHTML = `
     <div class="field" style="margin: 0;">
       <label>Type</label>
-      <select data-k="type">
+      <select data-k="type" aria-label="Debt ${n} type" onchange="onDebtTypeChange(this)">
         <option value="" selected>Select…</option>
         <option value="credit_card">Credit card</option>
         <option value="personal_loan">Personal loan</option>
@@ -874,19 +887,32 @@ function addDebtRow() {
     </div>
     <div class="field" style="margin: 0;">
       <label>Balance</label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" data-k="balance" placeholder="e.g. 5,000" min="0" onfocus="this.select()" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" data-k="balance" placeholder="e.g. 5,000" min="0" aria-label="Debt ${n} balance" onfocus="this.select()" /></div>
     </div>
-    <div class="field" style="margin: 0;">
+    <div class="field" data-field="rate" style="margin: 0;">
       <label>Rate</label>
-      <div class="input-wrap no-prefix"><input type="number" data-k="rate" placeholder="e.g. 18.9" step="0.1" min="0" onfocus="this.select()" /><span class="suffix">% p.a.</span></div>
+      <div class="input-wrap no-prefix"><input type="number" inputmode="decimal" data-k="rate" placeholder="e.g. 18.9" step="0.01" min="0" aria-label="Debt ${n} interest rate, percent per year" onfocus="this.select()" /><span class="suffix">% p.a.</span></div>
     </div>
-    <div class="field" style="margin: 0;">
+    <div class="field" data-field="min" style="margin: 0;">
       <label>Min/mo</label>
-      <div class="input-wrap"><span class="prefix">A$</span><input type="number" data-k="min" placeholder="e.g. 120" min="0" onfocus="this.select()" /></div>
+      <div class="input-wrap"><span class="prefix">A$</span><input type="number" inputmode="decimal" data-k="min" placeholder="e.g. 120" min="0" aria-label="Debt ${n} minimum monthly repayment" onfocus="this.select()" /></div>
     </div>
-    <button class="btn-icon" onclick="this.parentElement.remove()" title="Remove">×</button>
+    <button class="btn-icon" onclick="this.parentElement.remove()" title="Remove" aria-label="Remove debt ${n}">×</button>
+    <p class="hecs-hint" style="display: none; grid-column: 1 / -1; margin: 0;">HECS/HELP has no interest rate or minimum — it's indexed yearly and repaid through your tax once you earn over the threshold.</p>
   `;
   list.appendChild(row);
+}
+
+// HECS/HELP has no interest rate or minimum repayment — hide those fields instead of asking for them.
+function onDebtTypeChange(sel) {
+  const row = sel.closest('.debt-row');
+  const isHecs = sel.value === 'hecs';
+  row.querySelectorAll('[data-field="rate"], [data-field="min"]').forEach(f => { f.style.display = isHecs ? 'none' : ''; });
+  row.querySelector('.hecs-hint').style.display = isHecs ? 'block' : 'none';
+  if (isHecs) {
+    row.querySelector('[data-k="rate"]').value = '';
+    row.querySelector('[data-k="min"]').value = '';
+  }
 }
 
 function collectDebts() {
@@ -923,6 +949,17 @@ function selectGoal(el) {
   el.parentElement.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   state.goal = el.dataset.val;
+}
+
+// From the results screen: open Step 3 with the car fields showing, keeping every other answer.
+function editCarDetails() {
+  const yesPill = document.querySelector('.step[data-step="3"] .radio-pill[data-val="yes"]');
+  if (yesPill) selectCar(yesPill);
+  const submitBtn = document.getElementById('submit-btn');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'See my money plan'; }
+  showStep(3);
+  const price = document.getElementById('car-price');
+  if (price) price.focus({ preventScroll: true });
 }
 
 function resetApp() {
@@ -1193,14 +1230,14 @@ function bufferBand(months) {
 
 function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials, totalDebtMin, carCompare, debtOrder }) {
   const buffer = bufferBand(bufferMonths);
-  const heroClass = moves.length && moves[0].title.startsWith("You're spending") ? 'red'
-                  : buffer.color === 'red' ? 'red'
-                  : buffer.color === 'amber' ? 'amber' : 'green';
+  // The first move is the answer, not an error: only an overspend gets the danger style.
+  // Buffer severity is still shown on the "Buffer status" tile.
+  const heroClass = moves.length && moves[0].title.startsWith("You're spending") ? 'red' : 'green';
 
   let html = `
     <div class="result-hero ${heroClass}">
-      <div class="step-label" style="color: var(--color-text);">Your plan</div>
-      <h3>${moves[0].title}</h3>
+      <div class="step-label" style="color: var(--color-text);">Your first move</div>
+      <h2>${moves[0].title}</h2>
       <p style="color: var(--color-text-muted);">${moves[0].body.split('.')[0]}.</p>
     </div>
 
@@ -1208,51 +1245,6 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
       <div class="summary-tile"><div class="l">Monthly surplus</div><div class="v" style="color: ${surplus < 0 ? 'var(--color-danger)' : 'var(--color-accent)'};">${fmt(surplus)}</div></div>
       <div class="summary-tile"><div class="l">Buffer</div><div class="v">${bufferMonths.toFixed(1)} mo</div></div>
       <div class="summary-tile"><div class="l">Buffer status</div><div class="v status-${buffer.color === 'red' ? 'bad' : buffer.color === 'amber' ? 'warn' : 'good'}">${buffer.label}</div></div>
-    </div>
-  `;
-
-  // ─── Pre-Payment AHA: Unseen Financial Leak Detection ───
-  let annualInterestDrain = 0;
-  let unoptimisedSpread = 0;
-  if (state.debts && state.debts.length > 0) {
-    state.debts.forEach(d => {
-      annualInterestDrain += d.balance * (d.rate / 100);
-      const benchmark = d.type === 'card' ? 11.99 : d.type === 'car' ? 6.99 : 7.5;
-      if (d.rate > benchmark) {
-        unoptimisedSpread += d.balance * ((d.rate - benchmark) / 100);
-      }
-    });
-  }
-  let carLeak = carCompare ? carCompare.totalSaving : 0;
-  let threeYearInterestDrain = Math.round(unoptimisedSpread * 2.5 + carLeak);
-  if (threeYearInterestDrain < 1200 && state.debts && state.debts.length > 0) {
-    threeYearInterestDrain = Math.max(1200, Math.round(annualInterestDrain * 0.8));
-  } else if (!state.debts || state.debts.length === 0) {
-    threeYearInterestDrain = carLeak > 0 ? carLeak : 850;
-  }
-  let monthsSaved = Math.min(22, Math.max(5, Math.round((state.debts ? state.debts.length : 1) * 3.5)));
-  let monthlyLeak = Math.round(threeYearInterestDrain / 36);
-
-  html += `
-    <div class="card" style="margin-top:var(--space-5);padding:var(--space-5);background:var(--color-warning-soft);border:1px solid var(--color-warning);border-radius:var(--radius-lg);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-4);flex-wrap:wrap;">
-        <div style="flex:1;min-width:260px;">
-          <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-2);background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-warning);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-extrabold);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-2);">
-            ⚠️ Diagnostic Alert: Unseen Financial Leak
-          </div>
-          <h4 style="font-size:var(--text-lg);font-weight:var(--weight-bold);color:var(--color-text);margin-bottom:var(--space-1);">
-            ${fmt(threeYearInterestDrain)} in avoidable lender margin & interest drag
-          </h4>
-          <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin:0;line-height:1.5;">
-            Without active rate renegotiation and targeted payoff sequencing, you are projected to lose ~${fmt(monthlyLeak)}/month in avoidable lender interest. Our Active Co-Pilot protocol pulls your debt freedom date forward by <strong>${monthsSaved} months</strong>.
-          </p>
-        </div>
-        <div style="background:var(--color-surface);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);border:1px solid var(--color-border);text-align:right;min-width:160px;flex-shrink:0;">
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted);font-weight:var(--weight-semibold);">Projected 3-Yr Loss</div>
-          <div style="font-size:var(--text-xl);font-weight:var(--weight-extrabold);color:var(--color-danger);">${fmt(threeYearInterestDrain)}</div>
-          <div style="font-size:var(--text-xs);color:var(--color-accent-dark);font-weight:var(--weight-bold);margin-top:var(--space-1);">⚡ ${monthsSaved} mo earlier freedom</div>
-        </div>
-      </div>
     </div>
   `;
 
@@ -1306,8 +1298,8 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
                 <td style="padding: 10px 6px;">${niceType(d.type)}</td>
                 <td style="padding: 10px 6px;"><span style="display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600; background: ${tierColorMap[d.tierColor]}22; color: ${tierColorMap[d.tierColor]};">${d.tier}</span></td>
                 <td style="padding: 10px 6px; text-align: right; font-weight: 600;">${fmt(d.balance)}</td>
-                <td style="padding: 10px 6px; text-align: right;">${d.rate}%</td>
-                <td style="padding: 10px 6px; text-align: right; color: var(--color-text-muted);">${fmt(d.min)}</td>
+                <td style="padding: 10px 6px; text-align: right;">${d.type === 'hecs' ? 'Indexed' : d.rate + '%'}</td>
+                <td style="padding: 10px 6px; text-align: right; color: var(--color-text-muted);">${d.type === 'hecs' ? 'Via tax' : fmt(d.min)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1379,27 +1371,21 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
     </div>
   `;
 
-  // ─── PDF section — beta: free; post-beta: waitlist
+  // ─── PDF section — the plan PDF is free for everyone; paid options open on request
   html += `
     <div class="upsell" id="pdf-section">
 
-      <div id="pdf-loading" style="text-align:center;padding:var(--space-3);color:var(--color-text-muted);font-size:var(--text-sm);">Loading…</div>
-
-      <!-- Beta open: free PDF download -->
-      <div id="pdf-beta-open" style="display:none;">
+      <!-- Free PDF download -->
+      <div id="pdf-free">
         <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);background:var(--color-accent-soft);color:var(--color-accent-dark);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-2);">
-          <span>★</span> Beta Access
+          <span>★</span> Free
         </div>
         <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">Your Personalised Money Plan PDF</h3>
-        <p style="margin-bottom:var(--space-3);color:var(--color-text-muted);font-size:var(--text-sm);">Full plan + 12-month repayment schedule + car loan scenarios. Free for the first 50 beta users.</p>
-        <div style="margin-bottom:var(--space-4);">
-          <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-1);"><strong id="pdf-spots-num">—</strong> of 50 free spots remaining</p>
-          <div style="height:6px;background:var(--color-border);border-radius:var(--radius-full);overflow:hidden;"><div id="pdf-bar" style="height:100%;background:var(--color-accent);border-radius:var(--radius-full);transition:width .4s;width:0%"></div></div>
-        </div>
+        <p style="margin-bottom:var(--space-4);color:var(--color-text-muted);font-size:var(--text-sm);">Full plan + 12-month repayment schedule + car loan scenarios.</p>
         <button id="pdf-download-btn" onclick="downloadPdf()" class="btn btn-primary pdf-download-btn" style="display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download my free PDF</button>
         <div id="pdf-error" style="display:none;padding:var(--space-3);background:var(--color-danger-soft);border-radius:var(--radius-sm);color:var(--color-danger);margin-top:var(--space-2);">Something went wrong — please try again.</div>
 
-        <!-- Premium Upgrade Card inside Beta -->
+        <!-- Paid upgrade teaser -->
         <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-md);text-align:left;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">
             <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;">★ Active Co-Pilot Access</div>
@@ -1409,14 +1395,14 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
           <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
             You don't need the expensive A$149 static audit. Start our Active Co-Pilot for A$49/mo: includes full 7-section blueprint, word-for-word bank retention script (recovers $49 in 15 mins), and ongoing monthly rate defense. Includes our <strong>30-Day 100x Guarantee</strong> (identifies at least A$1,400 in savings or prompt 100% refund).
           </p>
-          <button onclick="showPdfBetaFull()" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-4);background:var(--color-accent);color:var(--color-surface);border:none;cursor:pointer;font-weight:var(--weight-bold);">
+          <button onclick="showPaidOptions()" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-4);background:var(--color-accent);color:var(--color-surface);border:none;cursor:pointer;font-weight:var(--weight-bold);">
             View Active Co-Pilot (A$49/mo) →
           </button>
         </div>
       </div>
 
-      <!-- Beta full: paid decision pack — 2 Tiers (Active Co-Pilot A$49/mo vs One-Off Audit A$149) -->
-      <div id="pdf-beta-full" style="display:none;">
+      <!-- Paid decision pack — 2 Tiers (Active Co-Pilot A$49/mo vs One-Off Audit A$149) -->
+      <div id="pdf-paid" style="display:none;margin-top:var(--space-6);">
         <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);background:var(--color-accent);color:var(--color-surface);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-2);">
           <span>★</span> Choose Your Decision Pack
         </div>
@@ -1428,7 +1414,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
         <!-- 2-Tier Selector Cards -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4);">
           <!-- Tier 1: Active Co-Pilot (Hero / Recommended) -->
-          <div id="tier-card-copilot" onclick="selectTier('copilot')" style="cursor:pointer;border:2px solid var(--color-accent);background:var(--color-accent-soft);border-radius:var(--radius-md);padding:var(--space-4);position:relative;transition:all var(--transition);">
+          <div id="tier-card-copilot" class="tier-card" role="button" tabindex="0" aria-pressed="true" onclick="selectTier('copilot')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectTier('copilot');}" style="cursor:pointer;border:2px solid var(--color-accent);background:var(--color-accent-soft);border-radius:var(--radius-md);padding:var(--space-4);position:relative;transition:all var(--transition);">
             <div style="position:absolute;top:-10px;right:var(--space-3);background:var(--color-accent);color:var(--color-surface);font-size:var(--text-xs);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:0.05em;">Recommended</div>
             <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">Active Co-Pilot</div>
             <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$49 <span style="font-size:var(--text-xs);font-weight:var(--weight-normal);color:var(--color-text-muted);">/ mo</span></div>
@@ -1443,7 +1429,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
           </div>
 
           <!-- Tier 2: One-Off Full Audit (The Expensive Anchor) -->
-          <div id="tier-card-audit" onclick="selectTier('audit')" style="cursor:pointer;border:2px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-4);transition:all var(--transition);">
+          <div id="tier-card-audit" class="tier-card" role="button" tabindex="0" aria-pressed="false" onclick="selectTier('audit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectTier('audit');}" style="cursor:pointer;border:2px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-4);transition:all var(--transition);">
             <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">One-Off Audit</div>
             <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$149 <span style="font-size:var(--text-xs);font-weight:var(--weight-normal);color:var(--color-text-muted);">one-off</span></div>
             <ul style="list-style:none;padding:0;margin:0;font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.6;">
@@ -1472,6 +1458,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
           </div>
         </div>
 
+        <p id="pay-email-line" style="font-size:var(--text-sm);color:var(--color-text-muted);text-align:center;margin-bottom:var(--space-3);"></p>
         <div id="paypal-button-container"></div>
         <div id="pdf-waitlist-success" style="display:none;padding:var(--space-3);background:var(--color-accent-soft);border-radius:var(--radius-sm);color:var(--color-accent-dark);font-weight:var(--weight-semibold);margin-top:var(--space-2);">✓ Payment confirmed — your decision pack is on its way.</div>
 
@@ -1492,9 +1479,9 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
         <div style="font-size:var(--text-2xl);flex-shrink:0;">🚗</div>
         <div>
           <div style="font-weight:700;font-size:var(--text-sm);color:var(--color-text);margin-bottom:3px;">Planning to buy a car?</div>
-          <div style="font-size:var(--text-sm);color:var(--color-text-muted);">Re-run the tool and fill out Step 3 to see a dealer vs bank loan comparison — most Australians overpay by A$3,000–8,000 by skipping this.</div>
+          <div style="font-size:var(--text-sm);color:var(--color-text-muted);">Add the car's price and the dealer and bank rates to see a side-by-side comparison. Your other answers are kept.</div>
         </div>
-        <button class="btn btn-secondary" onclick="resetApp()" style="flex-shrink:0;font-size:var(--text-sm);padding:var(--space-2) var(--space-3);">Re-run →</button>
+        <button class="btn btn-secondary" onclick="editCarDetails()" style="flex-shrink:0;font-size:var(--text-sm);padding:var(--space-2) var(--space-3);">Add car details →</button>
       </div>
     `;
   }
@@ -1518,7 +1505,9 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   `;
 
   document.getElementById('results').innerHTML = html;
-  initPdfSection();
+  const resultsEmail = document.getElementById('results-email');
+  if (resultsEmail && state.email) resultsEmail.value = state.email;
+  clearLocalDraft();
 
   // Wire up results-email form after injection
   const ef = document.getElementById('results-email-form');
@@ -1588,57 +1577,24 @@ function shareReddit() {
   window.open(`https://www.reddit.com/r/AusFinance/submit?title=${title}&url=${url}`, '_blank');
 }
 
-/* ───── Beta PDF section ───── */
-async function initPdfSection() {
-  clearLocalDraft();
-  if (DEMO_MODE_BETA) {
-    showPdfBetaOpen(12);
-    return;
-  }
-  const fetchCountPromise = getFirebaseDb().ref('beta/count').once('value')
-    .then(snap => snap.val() || 0);
-  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 2500));
-
-  try {
-    const count = await Promise.race([fetchCountPromise, timeoutPromise]);
-    if (count === null) {
-      showPdfBetaOpen(12);
-    } else if (count >= BETA_LIMIT_APP) {
-      showPdfBetaFull();
-    } else {
-      showPdfBetaOpen(count);
-    }
-  } catch (e) {
-    console.error('Firebase beta count failed:', e);
-    showPdfBetaOpen(12);
-  }
-}
-
-function showPdfBetaOpen(count) {
-  const remaining = Math.max(0, BETA_LIMIT_APP - count);
-  const loadingEl = document.getElementById('pdf-loading');
-  if (loadingEl) loadingEl.style.display = 'none';
-  const openEl = document.getElementById('pdf-beta-open');
-  if (openEl) openEl.style.display = 'block';
-  const spotsEl = document.getElementById('pdf-spots-num');
-  if (spotsEl) spotsEl.textContent = remaining;
-  const barEl = document.getElementById('pdf-bar');
-  if (barEl) barEl.style.width = Math.min(100, (count / BETA_LIMIT_APP) * 100) + '%';
-}
-
-async function showPdfBetaFull() {
-  const loadingEl = document.getElementById('pdf-loading');
-  if (loadingEl) loadingEl.style.display = 'none';
-  const openEl = document.getElementById('pdf-beta-open');
-  if (openEl) openEl.style.display = 'none';
-  const fullEl = document.getElementById('pdf-beta-full');
-  if (fullEl) fullEl.style.display = 'block';
+/* ───── PDF section ───── */
+// Paid options open below the free PDF, which always stays available.
+async function showPaidOptions() {
+  const paidEl = document.getElementById('pdf-paid');
+  if (paidEl) paidEl.style.display = 'block';
   // Pre-populate state.email from the signed-in Google account so capture-order
   // knows where to deliver the PDF without requiring a separate email form.
   try {
     const email = Clerk.user?.primaryEmailAddress?.emailAddress;
-    if (email) state.email = email;
+    if (email && !state.email) state.email = email;
   } catch (_) {}
+  // Tell the buyer where the PDF goes before they pay.
+  const payEmailLine = document.getElementById('pay-email-line');
+  if (payEmailLine) {
+    payEmailLine.textContent = state.email
+      ? `Your PDF will be emailed to ${state.email}`
+      : 'Your PDF will be ready to download right after payment.';
+  }
   try {
     await loadPayPalSdk();
     initPayPalButton();
@@ -1694,10 +1650,6 @@ async function downloadPdf() {
         btn.style.background = 'var(--color-accent-dark)';
       }
     }
-    // Keep the landing-page spot-counter accurate
-    if (!DEMO_MODE_BETA) {
-      getFirebaseDb().ref('beta/count').transaction(v => (v || 0) + 1);
-    }
   } catch (e) {
     document.getElementById('pdf-error').style.display = 'block';
     if (btn) {
@@ -1707,20 +1659,6 @@ async function downloadPdf() {
   } finally {
     isGeneratingPdf = false;
   }
-}
-
-async function joinPdfWaitlist() {
-  const emailInput = document.getElementById('pdf-waitlist-email');
-  const email = emailInput.value.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    emailInput.style.borderColor = 'var(--color-danger)';
-    return;
-  }
-  if (!DEMO_MODE_BETA) {
-    const safeKey = btoa(email).replace(/[.#$[\]]/g, '_');
-    await getFirebaseDb().ref('waitlist/' + safeKey).set({ email, ts: Date.now() });
-  }
-  document.getElementById('pdf-waitlist-success').style.display = 'block';
 }
 
 /* ───── PayPal checkout ───── */
@@ -1759,6 +1697,8 @@ window.selectTier = function(tier) {
   const priceDisplay = document.getElementById('selected-tier-price');
   const summaryBox = document.getElementById('tier-summary-box');
   const guaranteeNote = document.getElementById('tier-guarantee-note');
+  if (copilotCard) copilotCard.setAttribute('aria-pressed', String(tier === 'copilot'));
+  if (auditCard) auditCard.setAttribute('aria-pressed', String(tier === 'audit'));
 
   if (tier === 'audit') {
     if (copilotCard) {
@@ -1844,7 +1784,8 @@ function initPayPalButton() {
           const balanceStr = topDebt ? fmt(topDebt.balance) : 'your current balance';
           const currentRateStr = topDebt ? `${topDebt.rate}% p.a.` : 'your current rate';
           const targetRateStr = topDebt ? `${Math.max(5.5, (topDebt.rate - 1.5)).toFixed(2)}% p.a.` : '1.50% lower';
-          const estMonthlySavings = topDebt ? fmt(Math.max(45, Math.round(topDebt.balance * 0.015 / 12))) : 'A$68';
+          // Saving from the 1.5-point rate cut the script asks for — computed, no floor. No debt → no estimate shown.
+          const estMonthlySavings = topDebt ? fmt(Math.round(topDebt.balance * 0.015 / 12)) : null;
 
           const retrievalScript = `Hi, I am reviewing my loan balance of ${balanceStr} currently with you at ${currentRateStr}. I see comparable prime Australian lenders offering around ${targetRateStr}. I would prefer to remain a customer today if you can match that rate and waive this year's account fee. If your retention team cannot authorize this adjustment, please transfer me directly to discharge so I can obtain my final payout figure.`;
 
@@ -1854,6 +1795,9 @@ function initPayPalButton() {
 
           if (result.emailSent) {
             msg += `<p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4);">Your complete 7-Section Strategy Dossier has been sent to <strong>${state.email || 'your email'}</strong>.</p>`;
+          } else if (!state.email) {
+            // No address was given — nothing failed, so don't present it as an error.
+            msg += `<p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4);">Your PDF is ready — download it below. Keep your PayPal receipt (order ${data.orderID}) for any refund request.</p>`;
           } else {
             msg += `<p style="font-size:var(--text-sm);color:var(--color-danger);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">We could not email your PDF (${result.emailError || 'email delivery issue'}), but you can download it below directly.</p>`;
           }
@@ -1865,7 +1809,7 @@ function initPayPalButton() {
                 <div style="font-size:var(--text-xs);font-weight:var(--weight-extrabold);text-transform:uppercase;color:var(--color-accent-dark);letter-spacing:0.05em;">
                   🎯 Day 1 Mission: Recover Your A$49 In 15 Minutes
                 </div>
-                <span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);padding:2px var(--space-2);border-radius:var(--radius-full);font-weight:var(--weight-bold);">Est. Recovery: ~${estMonthlySavings}/mo</span>
+                ${estMonthlySavings ? `<span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);padding:2px var(--space-2);border-radius:var(--radius-full);font-weight:var(--weight-bold);">If they cut 1.5 points: ~${estMonthlySavings}/mo</span>` : ''}
               </div>
               <h4 style="font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-2);">Word-for-Word Bank Retention Script</h4>
               <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
@@ -1877,9 +1821,7 @@ function initPayPalButton() {
               <div style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
                 <button id="copy-retrieval-script-btn" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-3);font-weight:var(--weight-bold);cursor:pointer;">
                   📋 Copy Script to Clipboard
-                </button>
-                <span style="font-size:var(--text-xs);color:var(--color-text-muted);">78% of Australian banks drop the rate immediately on this single call.</span>
-              </div>
+                </button>              </div>
             </div>
           `;
 
@@ -1980,6 +1922,14 @@ restoreFromLocal();
 // Seed one empty debt row
 addDebtRow();
 
+// Each pill group is labelled by the question above it, so screen readers announce it.
+document.querySelectorAll('.radio-group').forEach(g => {
+  const label = g.closest('.field')?.querySelector('label');
+  g.setAttribute('role', 'group');
+  if (label) g.setAttribute('aria-label', label.textContent.replace(/\s*\?\s*$/, '?').trim());
+});
+syncPillState();
+
 /* ── Clerk Auth ── */
 const _GOOGLE_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 13.875 17.64 11.567 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>`;
 document.getElementById('auth-google-btn').innerHTML = _GOOGLE_SVG + ' Continue with Google';
@@ -2011,6 +1961,8 @@ function signOutApp() { Clerk.signOut(); }
     const user = Clerk.user;
     if (user) {
       overlay.style.display = 'none';
+      // The signed-in address is where the plan/PDF goes unless the user types another one.
+      if (!state.email && user.primaryEmailAddress?.emailAddress) state.email = user.primaryEmailAddress.emailAddress;
       const name = user.fullName || user.primaryEmailAddress?.emailAddress || '';
       navUser.innerHTML = `<span>${name}</span><button class="nav-signout" onclick="signOutApp()">Sign out</button>`;
     } else {
