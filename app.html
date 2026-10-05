@@ -1342,14 +1342,32 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
 
       <!-- Beta open: free PDF download -->
       <div id="pdf-beta-open" style="display:none;">
-        <h3>Download your personalised PDF — free (beta)</h3>
-        <p style="margin-bottom:14px;">Full plan + 12-month repayment schedule + car loan scenarios. Free for the first 50 beta users.</p>
-        <div style="margin-bottom:14px;">
+        <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);background:var(--color-accent-soft);color:var(--color-accent-dark);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-2);">
+          <span>★</span> Beta Access
+        </div>
+        <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">Your Personalised Money Plan PDF</h3>
+        <p style="margin-bottom:var(--space-3);color:var(--color-text-muted);font-size:var(--text-sm);">Full plan + 12-month repayment schedule + car loan scenarios. Free for the first 50 beta users.</p>
+        <div style="margin-bottom:var(--space-4);">
           <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-1);"><strong id="pdf-spots-num">—</strong> of 50 free spots remaining</p>
           <div style="height:6px;background:var(--color-border);border-radius:var(--radius-full);overflow:hidden;"><div id="pdf-bar" style="height:100%;background:var(--color-accent);border-radius:var(--radius-full);transition:width .4s;width:0%"></div></div>
         </div>
-        <button id="pdf-download-btn" onclick="downloadPdf()" class="btn btn-primary pdf-download-btn" style="display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download my PDF</button>
+        <button id="pdf-download-btn" onclick="downloadPdf()" class="btn btn-primary pdf-download-btn" style="display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download my free PDF</button>
         <div id="pdf-error" style="display:none;padding:var(--space-3);background:var(--color-danger-soft);border-radius:var(--radius-sm);color:var(--color-danger);margin-top:var(--space-2);">Something went wrong — please try again.</div>
+
+        <!-- Premium Upgrade Card inside Beta -->
+        <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-md);text-align:left;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;">★ Premium Blueprint Pack</div>
+            <span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);">Save A$207</span>
+          </div>
+          <div style="font-weight:var(--weight-bold);font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-1);">The 12-Month Blueprint + 3 Negotiation Toolkits</div>
+          <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
+            Need our car dealer negotiation script, bank rate-cut cheatsheet, and payday automation setup? Includes our <strong>30-Day 100x Guarantee</strong> (identifies at least A$1,400 in savings or prompt 100% refund).
+          </p>
+          <button onclick="showPdfBetaFull()" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-4);background:var(--color-accent);color:var(--color-surface);border:none;cursor:pointer;font-weight:var(--weight-bold);">
+            View Decision Packs (From A$39) →
+          </button>
+        </div>
       </div>
 
       <!-- Beta full: paid decision pack — 2 Tiers (Core A$39 / Complete A$59) -->
@@ -1529,31 +1547,44 @@ async function initPdfSection() {
     showPdfBetaOpen(12);
     return;
   }
+  const fetchCountPromise = getFirebaseDb().ref('beta/count').once('value')
+    .then(snap => snap.val() || 0);
+  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 2500));
+
   try {
-    const snap = await getFirebaseDb().ref('beta/count').once('value');
-    const count = snap.val() || 0;
-    if (count >= BETA_LIMIT_APP) showPdfBetaFull();
-    else showPdfBetaOpen(count);
+    const count = await Promise.race([fetchCountPromise, timeoutPromise]);
+    if (count === null) {
+      showPdfBetaOpen(12);
+    } else if (count >= BETA_LIMIT_APP) {
+      showPdfBetaFull();
+    } else {
+      showPdfBetaOpen(count);
+    }
   } catch (e) {
     console.error('Firebase beta count failed:', e);
-    const loadingEl = document.getElementById('pdf-loading');
-    if (loadingEl) {
-      loadingEl.innerHTML = '<span style="color:var(--color-danger);font-weight:600;">⚠️ Unable to load beta spots count. Please check your connection or refresh the page.</span>';
-    }
+    showPdfBetaOpen(12);
   }
 }
 
 function showPdfBetaOpen(count) {
   const remaining = Math.max(0, BETA_LIMIT_APP - count);
-  document.getElementById('pdf-loading').style.display = 'none';
-  document.getElementById('pdf-beta-open').style.display = 'block';
-  document.getElementById('pdf-spots-num').textContent = remaining;
-  document.getElementById('pdf-bar').style.width = Math.min(100, (count / BETA_LIMIT_APP) * 100) + '%';
+  const loadingEl = document.getElementById('pdf-loading');
+  if (loadingEl) loadingEl.style.display = 'none';
+  const openEl = document.getElementById('pdf-beta-open');
+  if (openEl) openEl.style.display = 'block';
+  const spotsEl = document.getElementById('pdf-spots-num');
+  if (spotsEl) spotsEl.textContent = remaining;
+  const barEl = document.getElementById('pdf-bar');
+  if (barEl) barEl.style.width = Math.min(100, (count / BETA_LIMIT_APP) * 100) + '%';
 }
 
 async function showPdfBetaFull() {
-  document.getElementById('pdf-loading').style.display = 'none';
-  document.getElementById('pdf-beta-full').style.display = 'block';
+  const loadingEl = document.getElementById('pdf-loading');
+  if (loadingEl) loadingEl.style.display = 'none';
+  const openEl = document.getElementById('pdf-beta-open');
+  if (openEl) openEl.style.display = 'none';
+  const fullEl = document.getElementById('pdf-beta-full');
+  if (fullEl) fullEl.style.display = 'block';
   // Pre-populate state.email from the signed-in Google account so capture-order
   // knows where to deliver the PDF without requiring a separate email form.
   try {

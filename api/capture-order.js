@@ -308,6 +308,8 @@ module.exports = async function handler(req, res) {
       email: state.email || null,
       timestamp: Date.now(),
       captured: true,
+      tier: isComplete ? 'complete' : 'core',
+      amount: capturedAmount,
       emailSent,
       emailError: emailError || null,
     });
