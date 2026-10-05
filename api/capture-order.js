@@ -272,7 +272,8 @@ module.exports = async function handler(req, res) {
     }
 
     const capturedAmount = capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
-    const isComplete = capturedAmount === '59.00';
+    const isComplete = (capturedAmount === '49.00' || capturedAmount === '149.00' || capturedAmount === '59.00');
+    const tierName = (capturedAmount === '149.00') ? 'audit' : 'copilot';
 
     // Store capture record BEFORE expensive ops — so a retry after PDF/email
     // failure returns alreadyCaptured instead of hitting PayPal a second time.
@@ -280,7 +281,7 @@ module.exports = async function handler(req, res) {
       email: state.email || null,
       timestamp: Date.now(),
       captured: true,
-      tier: isComplete ? 'complete' : 'core',
+      tier: tierName,
       amount: capturedAmount,
       emailSent: false,
       emailError: null,
@@ -308,7 +309,7 @@ module.exports = async function handler(req, res) {
       email: state.email || null,
       timestamp: Date.now(),
       captured: true,
-      tier: isComplete ? 'complete' : 'core',
+      tier: tierName,
       amount: capturedAmount,
       emailSent,
       emailError: emailError || null,

@@ -43,11 +43,14 @@ module.exports = async function handler(req, res) {
 
   // Price is authoritative on the server — never trust client-supplied amount.
   const TIERS = {
-    core: { price: '39.00', desc: 'MoneyMoves AU — Core Decision Report' },
-    complete: { price: '59.00', desc: 'MoneyMoves AU — 12-Month Cashflow & Debt Blueprint (+ Bonuses)' },
+    copilot: { price: '49.00', desc: 'MoneyMoves AU — Active Co-Pilot (Month 1 Access + Bonuses)' },
+    audit: { price: '149.00', desc: 'MoneyMoves AU — One-Off Full Strategy Dossier' },
+    // Fallback aliases for backward compatibility
+    core: { price: '49.00', desc: 'MoneyMoves AU — Active Co-Pilot' },
+    complete: { price: '49.00', desc: 'MoneyMoves AU — Active Co-Pilot' },
   };
-  const tierKey = (req.body?.tier === 'core') ? 'core' : 'complete';
-  const selectedTier = TIERS[tierKey];
+  const tierKey = (req.body?.tier === 'audit') ? 'audit' : 'copilot';
+  const selectedTier = TIERS[tierKey] || TIERS.copilot;
   const PRICE = selectedTier.price;
   const CURRENCY = 'AUD';
   const { email } = req.body || {};

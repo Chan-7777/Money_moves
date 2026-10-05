@@ -10,7 +10,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { validateState, validateCapturedAmount, PRICE, PRICE_CORE, PRICE_COMPLETE, VALID_PRICES } = require('../lib/validators');
+const { validateState, validateCapturedAmount, PRICE, PRICE_MONTHLY, PRICE_AUDIT, VALID_PRICES } = require('../lib/validators');
 
 const CURRENCY = 'AUD';
 
@@ -66,24 +66,24 @@ test('validateState: rejects savings exceeding ceiling', () => {
 
 // ── Price enforcement ─────────────────────────────────────────────────────────
 
-test('server price constants: 39.00 and 59.00 AUD', () => {
+test('server price constants: 49.00 and 149.00 AUD', () => {
   // Regression guard: these must match what create-order.js sends to PayPal.
-  assert.equal(PRICE_CORE, '39.00');
-  assert.equal(PRICE_COMPLETE, '59.00');
+  assert.equal(PRICE_MONTHLY, '49.00');
+  assert.equal(PRICE_AUDIT, '149.00');
   assert.equal(CURRENCY, 'AUD');
 });
 
-test('validateCapturedAmount: accepts both 39.00 and 59.00 AUD', () => {
-  const captureCore = {
+test('validateCapturedAmount: accepts both 49.00 and 149.00 AUD', () => {
+  const captureMonthly = {
     status: 'COMPLETED',
-    purchase_units: [{ payments: { captures: [{ amount: { value: '39.00', currency_code: 'AUD' } }] } }],
+    purchase_units: [{ payments: { captures: [{ amount: { value: '49.00', currency_code: 'AUD' } }] } }],
   };
-  const captureComplete = {
+  const captureAudit = {
     status: 'COMPLETED',
-    purchase_units: [{ payments: { captures: [{ amount: { value: '59.00', currency_code: 'AUD' } }] } }],
+    purchase_units: [{ payments: { captures: [{ amount: { value: '149.00', currency_code: 'AUD' } }] } }],
   };
-  assert.equal(validateCapturedAmount(captureCore), true);
-  assert.equal(validateCapturedAmount(captureComplete), true);
+  assert.equal(validateCapturedAmount(captureMonthly), true);
+  assert.equal(validateCapturedAmount(captureAudit), true);
 });
 
 test('validateCapturedAmount: rejects underpriced capture (attack vector)', () => {

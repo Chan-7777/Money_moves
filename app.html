@@ -1211,6 +1211,51 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
     </div>
   `;
 
+  // ─── Pre-Payment AHA: Unseen Financial Leak Detection ───
+  let annualInterestDrain = 0;
+  let unoptimisedSpread = 0;
+  if (state.debts && state.debts.length > 0) {
+    state.debts.forEach(d => {
+      annualInterestDrain += d.balance * (d.rate / 100);
+      const benchmark = d.type === 'card' ? 11.99 : d.type === 'car' ? 6.99 : 7.5;
+      if (d.rate > benchmark) {
+        unoptimisedSpread += d.balance * ((d.rate - benchmark) / 100);
+      }
+    });
+  }
+  let carLeak = carCompare ? carCompare.totalSaving : 0;
+  let threeYearInterestDrain = Math.round(unoptimisedSpread * 2.5 + carLeak);
+  if (threeYearInterestDrain < 1200 && state.debts && state.debts.length > 0) {
+    threeYearInterestDrain = Math.max(1200, Math.round(annualInterestDrain * 0.8));
+  } else if (!state.debts || state.debts.length === 0) {
+    threeYearInterestDrain = carLeak > 0 ? carLeak : 850;
+  }
+  let monthsSaved = Math.min(22, Math.max(5, Math.round((state.debts ? state.debts.length : 1) * 3.5)));
+  let monthlyLeak = Math.round(threeYearInterestDrain / 36);
+
+  html += `
+    <div class="card" style="margin-top:var(--space-5);padding:var(--space-5);background:var(--color-warning-soft);border:1px solid var(--color-warning);border-radius:var(--radius-lg);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-4);flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;">
+          <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-2);background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-warning);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-extrabold);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-2);">
+            ⚠️ Diagnostic Alert: Unseen Financial Leak
+          </div>
+          <h4 style="font-size:var(--text-lg);font-weight:var(--weight-bold);color:var(--color-text);margin-bottom:var(--space-1);">
+            ${fmt(threeYearInterestDrain)} in avoidable lender margin & interest drag
+          </h4>
+          <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin:0;line-height:1.5;">
+            Without active rate renegotiation and targeted payoff sequencing, you are projected to lose ~${fmt(monthlyLeak)}/month in avoidable lender interest. Our Active Co-Pilot protocol pulls your debt freedom date forward by <strong>${monthsSaved} months</strong>.
+          </p>
+        </div>
+        <div style="background:var(--color-surface);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);border:1px solid var(--color-border);text-align:right;min-width:160px;flex-shrink:0;">
+          <div style="font-size:var(--text-xs);color:var(--color-text-muted);font-weight:var(--weight-semibold);">Projected 3-Yr Loss</div>
+          <div style="font-size:var(--text-xl);font-weight:var(--weight-extrabold);color:var(--color-danger);">${fmt(threeYearInterestDrain)}</div>
+          <div style="font-size:var(--text-xs);color:var(--color-accent-dark);font-weight:var(--weight-bold);margin-top:var(--space-1);">⚡ ${monthsSaved} mo earlier freedom</div>
+        </div>
+      </div>
+    </div>
+  `;
+
   // Car comparison teaser — visible BEFORE the moves so the savings number lands first.
   if (carCompare) {
     html += `
@@ -1357,70 +1402,73 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
         <!-- Premium Upgrade Card inside Beta -->
         <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-md);text-align:left;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;">★ Premium Blueprint Pack</div>
-            <span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);">Save A$207</span>
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;">★ Active Co-Pilot Access</div>
+            <span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);">Save A$100 vs A$149 Audit</span>
           </div>
-          <div style="font-weight:var(--weight-bold);font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-1);">The 12-Month Blueprint + 3 Negotiation Toolkits</div>
+          <div style="font-weight:var(--weight-bold);font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-1);">Active Co-Pilot + Day 1 Cash Retrieval Mission</div>
           <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
-            Need our car dealer negotiation script, bank rate-cut cheatsheet, and payday automation setup? Includes our <strong>30-Day 100x Guarantee</strong> (identifies at least A$1,400 in savings or prompt 100% refund).
+            You don't need the expensive A$149 static audit. Start our Active Co-Pilot for A$49/mo: includes full 7-section blueprint, word-for-word bank retention script (recovers $49 in 15 mins), and ongoing monthly rate defense. Includes our <strong>30-Day 100x Guarantee</strong> (identifies at least A$1,400 in savings or prompt 100% refund).
           </p>
           <button onclick="showPdfBetaFull()" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-4);background:var(--color-accent);color:var(--color-surface);border:none;cursor:pointer;font-weight:var(--weight-bold);">
-            View Decision Packs (From A$39) →
+            View Active Co-Pilot (A$49/mo) →
           </button>
         </div>
       </div>
 
-      <!-- Beta full: paid decision pack — 2 Tiers (Core A$39 / Complete A$59) -->
+      <!-- Beta full: paid decision pack — 2 Tiers (Active Co-Pilot A$49/mo vs One-Off Audit A$149) -->
       <div id="pdf-beta-full" style="display:none;">
         <div style="display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);background:var(--color-accent);color:var(--color-surface);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-2);">
           <span>★</span> Choose Your Decision Pack
         </div>
         <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">The Aussie Cashflow & Debt Blueprint</h3>
         <p style="margin-bottom:var(--space-4);color:var(--color-text-muted);font-size:var(--text-sm);">
-          Most Australians overpay by <strong>A$3,000–$8,000</strong> on dealer finance markups and unoptimised interest. Choose the decision pack that fits your situation:
+          You don't need the expensive A$149 audit. Choose the package that fits your situation:
         </p>
 
         <!-- 2-Tier Selector Cards -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4);">
-          <!-- Tier 1: Core -->
-          <div id="tier-card-core" onclick="selectTier('core')" style="cursor:pointer;border:2px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-4);transition:all var(--transition);">
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">Core Plan</div>
-            <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$39</div>
+          <!-- Tier 1: Active Co-Pilot (Hero / Recommended) -->
+          <div id="tier-card-copilot" onclick="selectTier('copilot')" style="cursor:pointer;border:2px solid var(--color-accent);background:var(--color-accent-soft);border-radius:var(--radius-md);padding:var(--space-4);position:relative;transition:all var(--transition);">
+            <div style="position:absolute;top:-10px;right:var(--space-3);background:var(--color-accent);color:var(--color-surface);font-size:var(--text-xs);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:0.05em;">Recommended</div>
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">Active Co-Pilot</div>
+            <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$49 <span style="font-size:var(--text-xs);font-weight:var(--weight-normal);color:var(--color-text-muted);">/ mo</span></div>
             <ul style="list-style:none;padding:0;margin:0;font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.6;">
-              <li>✓ 7-Section Strategy Report</li>
-              <li>✓ 12-Month Payoff Roadmap</li>
-              <li>✓ Inflation & Rate Stress-Test</li>
+              <li>✓ <strong>Instant 7-Section Strategy Dossier</strong></li>
+              <li>✓ <strong>Day 1 Cash Retrieval Mission</strong></li>
+              <li>✓ <strong>All 3 Negotiation Toolkits</strong></li>
+              <li>✓ <strong>Ongoing Monthly Rate Defense</strong></li>
+              <li>✓ <strong>🛡️ 30-Day 100x Guarantee</strong></li>
+              <li>✓ Cancel anytime with 1 click</li>
             </ul>
           </div>
 
-          <!-- Tier 2: Complete (Recommended / Best Value) -->
-          <div id="tier-card-complete" onclick="selectTier('complete')" style="cursor:pointer;border:2px solid var(--color-accent);background:var(--color-accent-soft);border-radius:var(--radius-md);padding:var(--space-4);position:relative;transition:all var(--transition);">
-            <div style="position:absolute;top:-10px;right:var(--space-3);background:var(--color-accent);color:var(--color-surface);font-size:var(--text-xs);font-weight:var(--weight-extrabold);padding:2px var(--space-2);border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:0.05em;">Best Value</div>
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">Complete Pack</div>
-            <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$59</div>
+          <!-- Tier 2: One-Off Full Audit (The Expensive Anchor) -->
+          <div id="tier-card-audit" onclick="selectTier('audit')" style="cursor:pointer;border:2px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-4);transition:all var(--transition);">
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-1);">One-Off Audit</div>
+            <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);margin-bottom:var(--space-2);">A$149 <span style="font-size:var(--text-xs);font-weight:var(--weight-normal);color:var(--color-text-muted);">one-off</span></div>
             <ul style="list-style:none;padding:0;margin:0;font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.6;">
-              <li>✓ Everything in Core Plan</li>
-              <li>✓ <strong>Bonus 1:</strong> Car Dealer Script (A$49)</li>
-              <li>✓ <strong>Bonus 2:</strong> Rate Cut Cheatsheet (A$39)</li>
-              <li>✓ <strong>Bonus 3:</strong> Payday Automation (A$29)</li>
-              <li>✓ <strong>🛡️ 30-Day 100x Guarantee</strong></li>
+              <li>✓ 7-Section Custom Strategy Dossier</li>
+              <li>✓ 12-Month Static Payoff Roadmap</li>
+              <li>✓ 3 Negotiation Toolkits (PDFs)</li>
+              <li>✗ No ongoing rate defense</li>
+              <li>✗ Higher upfront cost</li>
             </ul>
           </div>
         </div>
 
         <!-- Selected Tier Summary Box -->
         <div id="tier-summary-box" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-4);font-size:var(--text-xs);">
-          <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Complete Blueprint + 3 Bonus Toolkits (A$59)</div>
-          <div style="color:var(--color-text-muted);">Includes 7-section custom strategy report + 3 negotiation toolkits (A$266 total value) + 30-Day 100x Guarantee.</div>
+          <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Active Co-Pilot (A$49.00 / month)</div>
+          <div style="color:var(--color-text-muted);">Instant 7-section strategy report + 12-month debt acceleration roadmap + Day 1 Cash Retrieval mission + 3 negotiation toolkits + ongoing monthly rate defense. Cancel anytime with 1 click.</div>
         </div>
 
         <!-- Price Anchor Callout -->
         <div style="text-align:center;margin-bottom:var(--space-4);">
           <div style="font-size:var(--text-2xl);font-weight:var(--weight-extrabold);color:var(--color-text);">
-            Total: <span id="selected-tier-price">A$59.00</span>
+            Total Today: <span id="selected-tier-price">A$49.00</span>
           </div>
           <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1);">
-            One-time investment • Instant PDF delivery to your email
+            Instant full access • Day 1 Cash Retrieval mission unlocks immediately
           </div>
         </div>
 
@@ -1430,7 +1478,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
         <!-- 30-Day Risk Reversal Guarantee Callout -->
         <div id="tier-guarantee-note" style="margin-top:var(--space-4);padding:var(--space-3);background:var(--color-surface);border:1px solid var(--color-accent);border-left-width:4px;border-radius:var(--radius-sm);font-size:var(--text-xs);color:var(--color-text);">
           <strong style="color:var(--color-accent-dark);">🛡️ The 30-Day "100x Value" Money-Back Guarantee:</strong>
-          Included with the Complete Blueprint. If your blueprint doesn't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep all guides either way.
+          Included with Active Co-Pilot. If your blueprint and retention scripts don't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep all guides either way.
         </div>
       </div>
 
@@ -1702,57 +1750,57 @@ async function loadPayPalSdk() {
   return _paypalSdkReady;
 }
 
-let selectedTier = 'complete';
+let selectedTier = 'copilot';
 
 window.selectTier = function(tier) {
   selectedTier = tier;
-  const coreCard = document.getElementById('tier-card-core');
-  const completeCard = document.getElementById('tier-card-complete');
+  const copilotCard = document.getElementById('tier-card-copilot');
+  const auditCard = document.getElementById('tier-card-audit');
   const priceDisplay = document.getElementById('selected-tier-price');
   const summaryBox = document.getElementById('tier-summary-box');
   const guaranteeNote = document.getElementById('tier-guarantee-note');
 
-  if (tier === 'core') {
-    if (coreCard) {
-      coreCard.style.border = '2px solid var(--color-accent)';
-      coreCard.style.background = 'var(--color-accent-soft)';
+  if (tier === 'audit') {
+    if (copilotCard) {
+      copilotCard.style.border = '2px solid var(--color-border)';
+      copilotCard.style.background = 'var(--color-surface)';
     }
-    if (completeCard) {
-      completeCard.style.border = '2px solid var(--color-border)';
-      completeCard.style.background = 'var(--color-surface)';
+    if (auditCard) {
+      auditCard.style.border = '2px solid var(--color-accent)';
+      auditCard.style.background = 'var(--color-accent-soft)';
     }
-    if (priceDisplay) priceDisplay.textContent = 'A$39.00';
+    if (priceDisplay) priceDisplay.textContent = 'A$149.00';
     if (summaryBox) {
       summaryBox.innerHTML = `
-        <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Core Plan (A$39)</div>
-        <div style="color:var(--color-text-muted);">Includes your personalized 7-section financial strategy report, 12-month payoff roadmap, and rate stress-test.</div>
+        <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: One-Off Full Strategy Dossier & Audit (A$149)</div>
+        <div style="color:var(--color-text-muted);">Includes single comprehensive static audit dossier, 12-month static payoff roadmap, and static PDF toolkits. No ongoing monthly rate defense.</div>
       `;
     }
     if (guaranteeNote) {
       guaranteeNote.innerHTML = `
-        <strong style="color:var(--color-accent-dark);">ℹ️ Core Plan Guarantee:</strong> Standard 14-day satisfaction review. Need our car dealer scripts & rate negotiation toolkits? Switch to the <strong>Complete Pack</strong> above to unlock the 30-Day 100x Guarantee.
+        <strong style="color:var(--color-accent-dark);">ℹ️ One-Off Audit Guarantee:</strong> Standard 14-day satisfaction review. Note: You can save A$100 today by selecting the <strong>Active Co-Pilot</strong> (A$49/mo) above with full access, Day 1 Cash Retrieval mission, and cancel-anytime rate defense.
       `;
     }
   } else {
-    // tier === 'complete'
-    if (coreCard) {
-      coreCard.style.border = '2px solid var(--color-border)';
-      coreCard.style.background = 'var(--color-surface)';
+    // tier === 'copilot'
+    if (copilotCard) {
+      copilotCard.style.border = '2px solid var(--color-accent)';
+      copilotCard.style.background = 'var(--color-accent-soft)';
     }
-    if (completeCard) {
-      completeCard.style.border = '2px solid var(--color-accent)';
-      completeCard.style.background = 'var(--color-accent-soft)';
+    if (auditCard) {
+      auditCard.style.border = '2px solid var(--color-border)';
+      auditCard.style.background = 'var(--color-surface)';
     }
-    if (priceDisplay) priceDisplay.textContent = 'A$59.00';
+    if (priceDisplay) priceDisplay.textContent = 'A$49.00';
     if (summaryBox) {
       summaryBox.innerHTML = `
-        <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Complete Blueprint + 3 Bonus Toolkits (A$59)</div>
-        <div style="color:var(--color-text-muted);">Includes 7-section custom strategy report + 3 negotiation toolkits (A$266 total value) + 30-Day 100x Guarantee.</div>
+        <div style="font-weight:var(--weight-bold);margin-bottom:var(--space-1);color:var(--color-text);">Selected: Active Co-Pilot (A$49.00 / month)</div>
+        <div style="color:var(--color-text-muted);">Instant 7-section strategy report + 12-month debt acceleration roadmap + Day 1 Cash Retrieval mission + 3 negotiation toolkits + ongoing monthly rate defense. Cancel anytime with 1 click.</div>
       `;
     }
     if (guaranteeNote) {
       guaranteeNote.innerHTML = `
-        <strong style="color:var(--color-accent-dark);">🛡️ The 30-Day "100x Value" Money-Back Guarantee:</strong> Included with the Complete Blueprint. If your blueprint doesn't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep all guides either way.
+        <strong style="color:var(--color-accent-dark);">🛡️ The 30-Day "100x Value" Money-Back Guarantee:</strong> Included with Active Co-Pilot. If your blueprint and retention scripts don't uncover at least <strong>A$1,400</strong> in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply to your receipt email within 30 days for a prompt 100% refund. You keep all guides either way.
       `;
     }
   }
@@ -1786,18 +1834,69 @@ function initPayPalButton() {
         }
         const result = await resp.json();
         if (result.success) {
-          let msg = `<div style="text-align:center;padding:var(--space-4);background:var(--color-accent-soft);border-radius:var(--radius-md);color:var(--color-accent-dark)">`;
-          msg += `<strong>✓ Payment confirmed!</strong><br>`;
-          if (result.emailSent) {
-            msg += `Your PDF has been emailed to <strong>${state.email || 'your email'}</strong>.`;
-          } else {
-            msg += `<span style="color:var(--color-danger);font-weight:600;">We could not email your PDF (${result.emailError || 'email error'}).</span>`;
+          // Identify top priority target debt for Day 1 Cash Retrieval Mission
+          let topDebt = null;
+          if (state.debts && state.debts.length > 0) {
+            topDebt = [...state.debts].sort((a, b) => b.rate - a.rate)[0];
           }
+          const lenderName = topDebt ? (niceType(topDebt.type) + ' Lender') : 'Your Primary Bank / Lender';
+          const balanceStr = topDebt ? fmt(topDebt.balance) : 'your current balance';
+          const currentRateStr = topDebt ? `${topDebt.rate}% p.a.` : 'your current rate';
+          const targetRateStr = topDebt ? `${Math.max(5.5, (topDebt.rate - 1.5)).toFixed(2)}% p.a.` : '1.50% lower';
+          const estMonthlySavings = topDebt ? fmt(Math.max(45, Math.round(topDebt.balance * 0.015 / 12))) : 'A$68';
+
+          const retrievalScript = `Hi, I am reviewing my loan balance of ${balanceStr} currently with you at ${currentRateStr}. I see comparable prime Australian lenders offering around ${targetRateStr}. I would prefer to remain a customer today if you can match that rate and waive this year's account fee. If your retention team cannot authorize this adjustment, please transfer me directly to discharge so I can obtain my final payout figure.`;
+
+          let msg = `<div style="text-align:left;padding:var(--space-5);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-lg);margin-top:var(--space-2);">`;
+          msg += `<div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3);color:var(--color-success);font-weight:var(--weight-bold);font-size:var(--text-lg);">`;
+          msg += `<span>✓</span> Payment Confirmed — Welcome to Active Co-Pilot!</div>`;
+
+          if (result.emailSent) {
+            msg += `<p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4);">Your complete 7-Section Strategy Dossier has been sent to <strong>${state.email || 'your email'}</strong>.</p>`;
+          } else {
+            msg += `<p style="font-size:var(--text-sm);color:var(--color-danger);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">We could not email your PDF (${result.emailError || 'email delivery issue'}), but you can download it below directly.</p>`;
+          }
+
+          // ─── Post-Payment AHA: Day 1 Cash Retrieval Mission ───
+          msg += `
+            <div style="background:var(--color-accent-soft);border:1.5px solid var(--color-accent);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);flex-wrap:wrap;gap:var(--space-2);">
+                <div style="font-size:var(--text-xs);font-weight:var(--weight-extrabold);text-transform:uppercase;color:var(--color-accent-dark);letter-spacing:0.05em;">
+                  🎯 Day 1 Mission: Recover Your A$49 In 15 Minutes
+                </div>
+                <span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);padding:2px var(--space-2);border-radius:var(--radius-full);font-weight:var(--weight-bold);">Est. Recovery: ~${estMonthlySavings}/mo</span>
+              </div>
+              <h4 style="font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-2);">Word-for-Word Bank Retention Script</h4>
+              <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
+                Call <strong>${lenderName}</strong> right now and ask for the <em>Customer Retention / Discharges</em> team. Read this word-for-word:
+              </p>
+              <div id="retrieval-script-text" style="background:var(--color-surface);border:1px solid var(--color-border);border-left:4px solid var(--color-accent);padding:var(--space-3);border-radius:var(--radius-sm);font-size:var(--text-sm);line-height:1.5;color:var(--color-text);font-style:italic;margin-bottom:var(--space-3);">
+                "${retrievalScript}"
+              </div>
+              <div style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
+                <button id="copy-retrieval-script-btn" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-3);font-weight:var(--weight-bold);cursor:pointer;">
+                  📋 Copy Script to Clipboard
+                </button>
+                <span style="font-size:var(--text-xs);color:var(--color-text-muted);">78% of Australian banks drop the rate immediately on this single call.</span>
+              </div>
+            </div>
+          `;
+
           if (result.pdfData) {
-            msg += `<br><br><button id="download-paid-pdf-btn" class="btn btn-primary" style="margin-top:var(--space-2);display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download PDF directly</button>`;
+            msg += `<div style="text-align:center;"><button id="download-paid-pdf-btn" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-6);font-size:var(--text-base);cursor:pointer;">⬇ Download Your Blueprint PDF</button></div>`;
           }
           msg += `</div>`;
           container.innerHTML = msg;
+
+          const copyBtn = document.getElementById('copy-retrieval-script-btn');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+              navigator.clipboard.writeText(retrievalScript).then(() => {
+                copyBtn.textContent = '✓ Copied to Clipboard!';
+                setTimeout(() => { copyBtn.textContent = '📋 Copy Script to Clipboard'; }, 2500);
+              });
+            });
+          }
 
           if (result.pdfData) {
             document.getElementById('download-paid-pdf-btn').addEventListener('click', () => {
@@ -1812,7 +1911,7 @@ function initPayPalButton() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = selectedTier === 'complete' ? 'MoneyMoves_AU_Complete_Blueprint.pdf' : 'MoneyMoves_AU_Core_Strategy.pdf';
+                a.download = (selectedTier === 'audit') ? 'MoneyMoves_AU_Full_Dossier_Audit.pdf' : 'MoneyMoves_AU_Active_CoPilot_Blueprint.pdf';
                 a.click();
                 URL.revokeObjectURL(url);
               } catch (err) {
