@@ -123,15 +123,27 @@ function buildDebtPayoffOrder(debts) {
 
 // ─── Dates ───────────────────────────────────────────────────────────────────
 const TODAY = new Date();
-const fmtDate = (offsetDays) => new Date(TODAY.getTime() + offsetDays * 86400000)
-  .toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+// Fixed three-letter months: the en-AU locale mixes "Dec" with "June" and "Sept".
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtDate = (offsetDays) => {
+  const d = new Date(TODAY.getTime() + offsetDays * 86400000);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
 // Plan month 1 is the next calendar month.
 const monthLabel = (m) => {
   if (m === null || m === undefined) return '—';
   if (m === 0) return 'Already there';
   const d = new Date(TODAY.getFullYear(), TODAY.getMonth() + m, 1);
-  return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
+
+// A name typed all in lower case gets each word capitalised; anything else is left
+// exactly as typed, so names like "McDonald" or "de Silva" keep their own casing.
+function displayName(raw) {
+  const name = String(raw || '').trim().replace(/\s+/g, ' ');
+  if (!name || name !== name.toLowerCase()) return name;
+  return name.replace(/(^|[\s'-])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+}
 
 // ─── The simulation ──────────────────────────────────────────────────────────
 /**
@@ -477,7 +489,7 @@ function buildThisWeek(state, derived) {
 
 function buildCover(state, derived) {
   const plan = derived.plan;
-  const who = (state.name && String(state.name).trim()) || state.email || 'You';
+  const who = displayName(state.name) || state.email || 'You';
 
   const keyDates = [['Milestone', 'When', 'Detail']];
   keyDates.push(['1-month emergency buffer', monthLabel(plan.milestones.buffer1), fmt(plan.oneMonth)]);

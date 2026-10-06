@@ -125,6 +125,20 @@ test('cover uses the person\'s name and shows key dates', async () => {
   assert.match(text, /do these this week/i);
 });
 
+test('an all-lower-case name is capitalised; other names are left as typed', async () => {
+  assert.ok((await documentText({ ...CARD_AND_HECS, name: 'chandan reddy' })).includes('Prepared for Chandan Reddy'));
+  assert.ok((await documentText({ ...CARD_AND_HECS, name: "mary-jane o'brien" })).includes("Prepared for Mary-Jane O'Brien"));
+  assert.ok((await documentText({ ...CARD_AND_HECS, name: 'Ian McDonald' })).includes('Prepared for Ian McDonald'));
+  assert.ok((await documentText({ ...CARD_AND_HECS, name: 'Ana de Silva' })).includes('Prepared for Ana de Silva'));
+});
+
+test('month labels always use three-letter months', async () => {
+  // The HECS paragraph mentions "June 2026" in a sentence; only date labels must be short.
+  const text = (await documentText(CARD_AND_HECS)).replace(/for June 2026/g, '');
+  assert.ok(!/\b(June|July|Sept)\b \d{4}/.test(text), 'found a long month label');
+  assert.match(text, /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) 20\d\d\b/);
+});
+
 test('debt table shows the exact rate and HECS as repaid through tax', async () => {
   const text = await documentText(CARD_AND_HECS);
   assert.ok(text.includes('20.99%'));
