@@ -1,23 +1,21 @@
 /**
- * MoneyMoves AU — Personalised PDF Report Renderer (v0.2)
+ * MoneyMoves AU — Personalised Money Plan (PDF renderer, v0.3)
  * ---------------------------------------------------------
- * Takes a `state` JSON object (the same shape the prototype builds) and renders
- * a 7-section Word document. v0.2 incorporates every reviewer fix from the
- * first sample-report critique:
+ * Takes the app's `state` object and renders a Word document (converted to PDF
+ * by the API routes).
  *
- *   - Dynamic phase-A/phase-B cash-map allocation transition.
- *   - Section 4 heading corrected to "four scenarios" and the wait-scenario
- *     deposit growth uses the same 20% allocation as Section 2.
- *   - Depreciation hold (~5%/6mo) shown numerically in Section 4.
- *   - HECS section in Section 3 only renders when user has a HECS debt.
- *   - "Cost of doing nothing" gets a methodology footnote.
- *   - Section 5 depreciation note reconciles to "~18% Yr 1, ~10%/yr after".
- *   - Section 5 shows fuel L/100km explicitly.
- *   - Section 6 stress-test rate caveat: "applies to variable-rate loans only".
- *   - Section 7 action items reordered so 7-day debt action precedes 30-day buffer.
- *   - All dates computed dynamically from today; "moneymoves.com.au" tagged
- *     as placeholder until live.
- *   - Cover page carries a SAMPLE banner whenever email is the demo address.
+ * Every number in the report comes from ONE month-by-month simulation
+ * (`simulatePlan`) that follows the same priority order the plan recommends:
+ *   1. fill a 1-month emergency buffer
+ *   2. clear high-rate (≥10%) and ATO debt, highest rate first
+ *   3. fill a 3-month buffer
+ *   4. clear the remaining consumer debt, highest rate first
+ *   5. everything else → savings (or a car deposit when a car is planned)
+ * Interest accrues monthly; a cleared debt's minimum rolls into the next step.
+ * HECS/HELP is repaid through tax and home loans run on their own schedule, so
+ * neither receives extra repayments. Because the cash map, debt dates, interest
+ * figures, cost of inaction and checklist all read the same simulation, they
+ * cannot contradict each other.
  *
  * Usage:
  *   node build_pdf_report.js [state.json] [output.docx]
@@ -37,6 +35,15 @@ const RULES = {
   IDEAL_BUFFER_MONTHS: 6.0,
 };
 
+const SIM_MONTHS = 360;           // long enough to find payoff dates for most debts
+const COST_OF_INACTION_MONTHS = 60;
+const HECS_INDEXATION_PCT = 2.8;  // June 2026 indexation (lower of CPI / WPI) — same figure the app shows
+const RATE_RISE_PCT = 2;
+// Debt types whose rate normally moves with the market.
+const VARIABLE_RATE_TYPES = ['credit_card', 'personal_loan', 'home_loan', 'other'];
+// Never accelerated: HECS is repaid through tax; home loans are better served by an offset account.
+const NO_EXTRA_REPAYMENT_TYPES = ['hecs', 'home_loan'];
+
 // Australian running-cost defaults (FY 2025-26 illustrative averages).
 // Sources: Budget Direct, RACV, Finder.com.au.
 const RUNNING_COSTS = {
@@ -52,23 +59,40 @@ const RUNNING_COSTS = {
   waitHold12mo: 0.09,
 };
 
-const COLOR_NAVY = '0A192F'; // Ink (JPM/McKinsey dark blue/black)
+const REPORT_NAME = 'Personalised Money Plan';
+
+const COLOR_NAVY = '0A192F';
 const COLOR_NAVY_DARK = '020C1B';
 const COLOR_INK = '112233';
 const COLOR_INK_SOFT = '556677';
 const COLOR_RED = 'D64545';
 const COLOR_LINE = 'D0D7DE';
 const COLOR_CREAM = 'F8F9FA';
-const COLOR_GOLD_SOFT = 'F0F4F8'; // Muted grey/blue for callouts
-const COLOR_ACCENT = '005A9C'; // Institutional accent
+const COLOR_GOLD_SOFT = 'F0F4F8';
+const COLOR_ACCENT = '005A9C';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n) => {
   if (n === null || n === undefined || isNaN(n)) return '—';
-  const sign = n < 0 ? '-' : '';
-  return sign + 'A$' + Math.abs(Math.round(n)).toLocaleString('en-AU');
+  const rounded = Math.round(n);
+  const sign = rounded < 0 ? '-' : '';
+  return sign + 'A$' + Math.abs(rounded).toLocaleString('en-AU');
 };
-const fmtPct = (n, dp = 1) => `${(n).toFixed(dp)}%`;
+// Rates are shown exactly as entered (20.99%, 9.5%), never rounded to 21.0%.
+const fmtPct = (n) => `${Number(n.toFixed(2))}%`;
+
+const NICE_TYPE = {
+  credit_card: 'credit card',
+  personal_loan: 'personal loan',
+  car_loan: 'car loan',
+  bnpl: 'buy-now-pay-later',
+  ato: 'ATO debt',
+  hecs: 'HECS / HELP',
+  home_loan: 'home loan',
+  other: 'other debt',
+};
+const niceType = (t) => NICE_TYPE[t] || t;
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function calcMonthlyMortgage(principal, annualRate, years) {
   if (principal <= 0 || years <= 0) return 0;
@@ -78,60 +102,262 @@ function calcMonthlyMortgage(principal, annualRate, years) {
   return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
 }
 
-// Months to clear amortising debt at a fixed extra monthly payment.
-function monthsToClear(balance, annualRate, monthlyPayment) {
-  if (balance <= 0 || monthlyPayment <= 0) return null;
-  if (annualRate <= 0) return Math.ceil(balance / monthlyPayment);
-  const r = annualRate / 100 / 12;
-  if (monthlyPayment <= balance * r) return null; // never clears
-  const n = -Math.log(1 - (balance * r) / monthlyPayment) / Math.log(1 + r);
-  return Math.ceil(n);
-}
-
-function totalInterestPaid(balance, annualRate, monthlyPayment) {
-  const n = monthsToClear(balance, annualRate, monthlyPayment);
-  if (!n) return 0;
-  return Math.max(0, monthlyPayment * n - balance);
-}
-
 function buildDebtPayoffOrder(debts) {
   const byRate = (a, b) => b.rate - a.rate;
-  const high = debts.filter(d => d.rate >= RULES.HIGH_RATE_THRESHOLD && !['hecs','home_loan','ato'].includes(d.type)).sort(byRate);
+  const isConsumer = d => !['hecs', 'home_loan', 'ato'].includes(d.type);
+  const high = debts.filter(d => isConsumer(d) && d.rate >= RULES.HIGH_RATE_THRESHOLD).sort(byRate);
   const ato  = debts.filter(d => d.type === 'ato');
-  const mid  = debts.filter(d => d.rate < RULES.HIGH_RATE_THRESHOLD && d.rate >= 5 && !['hecs','home_loan','ato'].includes(d.type)).sort(byRate);
-  const low  = debts.filter(d => d.rate < 5 && !['hecs','home_loan','ato'].includes(d.type)).sort(byRate);
+  const mid  = debts.filter(d => isConsumer(d) && d.rate < RULES.HIGH_RATE_THRESHOLD && d.rate >= 5).sort(byRate);
+  const low  = debts.filter(d => isConsumer(d) && d.rate < 5).sort(byRate);
   const home = debts.filter(d => d.type === 'home_loan').sort(byRate);
   const hecs = debts.filter(d => d.type === 'hecs');
-  const order = [];
-  high.forEach(d => order.push({ ...d, tier: 'High-rate (kill it)' }));
-  ato.forEach(d => order.push({ ...d, tier: 'ATO (enforcement risk)' }));
-  mid.forEach(d => order.push({ ...d, tier: 'Mid-rate (5-10%)' }));
-  low.forEach(d => order.push({ ...d, tier: 'Low-rate consumer' }));
-  home.forEach(d => order.push({ ...d, tier: 'Home loan' }));
-  hecs.forEach(d => order.push({ ...d, tier: 'HECS / HELP (index-only)' }));
-  return order;
+  return [
+    ...high.map(d => ({ ...d, tier: 'High-rate', priority: true })),
+    ...ato.map(d => ({ ...d, tier: 'ATO (enforcement risk)', priority: true })),
+    ...mid.map(d => ({ ...d, tier: 'Mid-rate', priority: false })),
+    ...low.map(d => ({ ...d, tier: 'Low-rate', priority: false })),
+    ...home.map(d => ({ ...d, tier: 'Home loan', priority: false })),
+    ...hecs.map(d => ({ ...d, tier: 'HECS / HELP', priority: false })),
+  ];
 }
 
-const NICE_TYPE = {
-  credit_card: 'credit card',
-  personal_loan: 'personal loan',
-  car_loan: 'car loan',
-  bnpl: 'BNPL',
-  ato: 'ATO debt',
-  hecs: 'HECS / HELP',
-  home_loan: 'home loan',
-  other: 'other debt',
+// ─── Dates ───────────────────────────────────────────────────────────────────
+const TODAY = new Date();
+const fmtDate = (offsetDays) => new Date(TODAY.getTime() + offsetDays * 86400000)
+  .toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+// Plan month 1 is the next calendar month.
+const monthLabel = (m) => {
+  if (m === null || m === undefined) return '—';
+  if (m === 0) return 'Already there';
+  const d = new Date(TODAY.getFullYear(), TODAY.getMonth() + m, 1);
+  return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
 };
+
+// ─── The simulation ──────────────────────────────────────────────────────────
+/**
+ * strategy:
+ *   'plan'     — the staged plan described at the top of this file
+ *   'equal'    — same stages, but each month's extra debt money is split evenly
+ *                across the open debts (used only to show what avalanche saves)
+ *   'minimums' — minimum repayments only; surplus is never used on debt
+ */
+function simulatePlan(state, { strategy = 'plan', months = SIM_MONTHS } = {}) {
+  const ordered = buildDebtPayoffOrder(state.debts || []);
+  const debts = ordered.map(d => ({
+    ...d,
+    bal: Math.max(0, d.balance),
+    interestPaid: 0,
+    clearedMonth: d.balance <= 0 ? 0 : null,
+  }));
+  const allMins = debts.reduce((s, d) => s + (d.min || 0), 0);
+  const oneMonth = state.expenses + allMins;          // living costs + today's minimums
+  const threeMonth = oneMonth * RULES.TARGET_BUFFER_MONTHS;
+  const savingLabel = state.car && state.car.considering === 'yes' ? 'Car deposit / savings' : 'Savings / investing';
+
+  let buffer = state.savings;
+  let saved = 0;
+  const milestones = {
+    buffer1: buffer >= oneMonth ? 0 : null,
+    buffer3: buffer >= threeMonth ? 0 : null,
+    savingsStart: null,
+  };
+  const rows = [];
+
+  for (let m = 1; m <= months; m++) {
+    const row = { m, income: state.income, living: state.expenses, mins: 0, interest: 0,
+      toBuffer: 0, fromBuffer: 0, toDebt: 0, toSave: 0, focus: [] };
+
+    // 1. Interest, then minimum repayments (HECS is collected through tax, not from this budget).
+    for (const d of debts) {
+      if (d.type === 'hecs' || d.bal <= 0) continue;
+      const interest = d.bal * d.rate / 1200;
+      d.interestPaid += interest;
+      row.interest += interest;
+      d.bal += interest;
+      const pay = Math.min(d.min || 0, d.bal);
+      d.bal -= pay;
+      row.mins += pay;
+      if (d.bal <= 0.005) { d.bal = 0; if (d.clearedMonth === null) d.clearedMonth = m; }
+    }
+
+    let available = state.income - state.expenses - row.mins;
+    row.surplus = available;
+
+    // 2. A shortfall comes out of the buffer while it lasts.
+    if (available < 0) {
+      row.fromBuffer = Math.min(buffer, -available);
+      buffer -= row.fromBuffer;
+      row.focus.push('Covering a shortfall');
+      available = 0;
+    }
+
+    const payExtra = (list) => {
+      let open = list.filter(d => d.bal > 0);
+      if (strategy === 'equal') {
+        while (available > 0.005 && open.length) {
+          const share = available / open.length;
+          for (const d of open) {
+            const p = Math.min(d.bal, share);
+            d.bal -= p; available -= p; row.toDebt += p;
+            if (d.bal <= 0.005) { d.bal = 0; if (d.clearedMonth === null) d.clearedMonth = m; }
+          }
+          open = open.filter(d => d.bal > 0);
+        }
+      } else {
+        for (const d of open) {
+          if (available <= 0.005) break;
+          const p = Math.min(d.bal, available);
+          d.bal -= p; available -= p; row.toDebt += p;
+          if (d.bal <= 0.005) { d.bal = 0; if (d.clearedMonth === null) d.clearedMonth = m; }
+        }
+      }
+    };
+    const topUpBuffer = (target, label) => {
+      if (available <= 0 || buffer >= target) return;
+      const t = Math.min(available, target - buffer);
+      buffer += t; available -= t; row.toBuffer += t;
+      row.focus.push(label);
+    };
+    const accelerable = debts.filter(d => !NO_EXTRA_REPAYMENT_TYPES.includes(d.type));
+
+    if (strategy !== 'minimums') {
+      topUpBuffer(oneMonth, '1-month buffer');
+      // 'equal' is the comparison case: no debt gets priority, so it skips straight to splitting.
+      const priorityOpen = strategy === 'equal' ? [] : accelerable.filter(d => d.priority && d.bal > 0);
+      if (available > 0 && priorityOpen.length) {
+        row.focus.push(cap(niceType(priorityOpen[0].type)));
+        payExtra(priorityOpen);
+      }
+      topUpBuffer(threeMonth, '3-month buffer');
+      const restOpen = accelerable.filter(d => d.bal > 0);
+      if (available > 0 && restOpen.length) {
+        row.focus.push(cap(niceType(restOpen[0].type)));
+        payExtra(restOpen);
+      }
+    }
+    if (available > 0.005) {
+      row.toSave = available; saved += available;
+      row.focus.push(savingLabel);
+      if (milestones.savingsStart === null) milestones.savingsStart = m;
+    }
+
+    if (milestones.buffer1 === null && buffer >= oneMonth - 0.5) milestones.buffer1 = m;
+    if (milestones.buffer3 === null && buffer >= threeMonth - 0.5) milestones.buffer3 = m;
+    row.buffer = buffer;
+    row.saved = saved;
+    row.debtLeft = debts.filter(d => d.type !== 'hecs').reduce((s, d) => s + d.bal, 0);
+    rows.push(row);
+  }
+
+  const consumer = debts.filter(d => !NO_EXTRA_REPAYMENT_TYPES.includes(d.type));
+  const consumerCleared = consumer.length && consumer.every(d => d.clearedMonth !== null)
+    ? Math.max(...consumer.map(d => d.clearedMonth)) : null;
+  return { rows, debts, milestones: { ...milestones, consumerDebtFree: consumerCleared }, oneMonth, threeMonth };
+}
+
+const interestOver = (sim, months) => sim.rows.slice(0, months).reduce((s, r) => s + r.interest, 0);
+
+// ─── Derive everything the sections need ─────────────────────────────────────
+function deriveReportData(state) {
+  const debts = state.debts || [];
+  const debtMins = debts.reduce((s, d) => s + (d.min || 0), 0);
+  const surplus = state.income - state.expenses - debtMins;
+  const monthlyEssentials = state.expenses + debtMins;
+  const bufferMonths = state.savings / Math.max(monthlyEssentials, 1);
+
+  const plan = simulatePlan(state, { strategy: 'plan' });
+  const minimumsOnly = simulatePlan(state, { strategy: 'minimums' });
+
+  // What avalanche saves only means something with 2+ interest-bearing debts to choose between.
+  const interestBearing = debts.filter(d => d.rate > 0 && !NO_EXTRA_REPAYMENT_TYPES.includes(d.type));
+  let avalancheSaving = null;
+  if (interestBearing.length >= 2) {
+    const equal = simulatePlan(state, { strategy: 'equal' });
+    avalancheSaving = Math.max(0, interestOver(equal, SIM_MONTHS) - interestOver(plan, SIM_MONTHS));
+  }
+
+  const planInterest5y = interestOver(plan, COST_OF_INACTION_MONTHS);
+  const baseInterest5y = interestOver(minimumsOnly, COST_OF_INACTION_MONTHS);
+  const costOfInaction = Math.max(0, baseInterest5y - planInterest5y);
+
+  // Per-debt results from both runs, in plan order.
+  const debtOrder = plan.debts.map((d, i) => ({
+    ...d,
+    minimumsOnlyClearedMonth: minimumsOnly.debts[i].clearedMonth,
+    minimumsOnlyInterest: minimumsOnly.debts[i].interestPaid,
+  }));
+
+  const firstRow = plan.rows[0];
+  const firstPriority = debtOrder.find(d => d.priority && d.bal !== undefined && !NO_EXTRA_REPAYMENT_TYPES.includes(d.type));
+  const hasCar = state.car && state.car.considering === 'yes' && state.car.price > 0;
+
+  let topMove;
+  if (surplus < 100) {
+    topMove = surplus < 0
+      ? { title: "Close the gap: you're spending more than you earn",
+          shortBody: `Take-home ${fmt(state.income)} − living costs ${fmt(state.expenses)} − debt minimums ${fmt(debtMins)} = ${fmt(surplus)} a month. No plan works until this is positive: cut a fixed cost (insurance, subscriptions, refinancing) or lift income.` }
+      : { title: 'Create a monthly surplus first',
+          shortBody: `After living costs and minimums you have ${fmt(surplus)} a month left. That isn't enough for any other step to make progress. Cut one fixed cost or lift income first.` };
+  } else if (bufferMonths < RULES.MIN_BUFFER_MONTHS) {
+    const then = firstPriority ? ` Then switch the same amount to your ${niceType(firstPriority.type)}.` : '';
+    topMove = {
+      title: `Build a 1-month emergency buffer (${fmt(plan.oneMonth)})`,
+      shortBody: `Put your whole surplus (${fmt(surplus)}/month) into a separate high-interest savings account until it reaches ${fmt(plan.oneMonth)}, which on these numbers happens in ${monthLabel(plan.milestones.buffer1)}.${then} A flat tyre or vet bill on a credit card costs more than any interest you'd save by paying debt first.`,
+    };
+  } else if (firstPriority) {
+    topMove = {
+      title: `Pay off your ${niceType(firstPriority.type)} (${fmtPct(firstPriority.rate)})`,
+      shortBody: `It is your most expensive debt. Pay your whole surplus (${fmt(surplus)}/month) on top of the minimum and it is gone by ${monthLabel(firstPriority.clearedMonth)}.`,
+    };
+  } else if (bufferMonths < RULES.TARGET_BUFFER_MONTHS) {
+    topMove = {
+      title: `Top your buffer up to 3 months (${fmt(plan.threeMonth)})`,
+      shortBody: `You have no high-rate debt, so the next step is a 3-month buffer. At ${fmt(surplus)}/month you reach it in ${monthLabel(plan.milestones.buffer3)}.`,
+    };
+  } else if (debtOrder.some(d => !NO_EXTRA_REPAYMENT_TYPES.includes(d.type) && d.balance > 0)) {
+    const next = debtOrder.find(d => !NO_EXTRA_REPAYMENT_TYPES.includes(d.type) && d.balance > 0);
+    topMove = {
+      title: `Make extra repayments on your ${niceType(next.type)} (${fmtPct(next.rate)})`,
+      shortBody: `Your buffer is healthy. Putting ${fmt(surplus)}/month on top of the minimum clears it by ${monthLabel(next.clearedMonth)}. Check for early-repayment fees first.`,
+    };
+  } else {
+    topMove = {
+      title: 'Start a regular investment plan',
+      shortBody: `Buffer is healthy and there is no consumer debt. Automate ${fmt(surplus)}/month into a low-fee diversified ETF or salary-sacrificed super, in that order of convenience for you.`,
+    };
+  }
+
+  const waitItem = hasCar && bufferMonths < RULES.TARGET_BUFFER_MONTHS
+    ? `Wait on the car until your buffer is at 3 months (${monthLabel(plan.milestones.buffer3)} on these numbers). The car section shows the dollar difference between buying now and waiting.`
+    : `Avoid any new consumer debt (buy-now-pay-later, store cards, a financed car) until your high-rate debt is gone and your buffer reaches 3 months.`;
+
+  return {
+    surplus,
+    debtMins,
+    monthlyEssentials,
+    bufferMonths,
+    plan,
+    minimumsOnly,
+    firstRow,
+    debtOrder,
+    hasCar,
+    topMove,
+    waitItem,
+    costOfInaction,
+    planInterest5y,
+    baseInterest5y,
+    avalancheSaving,
+  };
+}
 
 // ─── docx primitives ─────────────────────────────────────────────────────────
 const sans = (text, opts = {}) => new TextRun({ text, font: 'Arial', ...opts });
 const serif = (text, opts = {}) => new TextRun({ text, font: 'Georgia', ...opts });
-
-const arial = sans; // backward compatibility
+const arial = sans;
 
 const p = (text, opts = {}) => new Paragraph({
   children: Array.isArray(text) ? text : [sans(text, { size: opts.size || 20, color: opts.color || COLOR_INK, bold: !!opts.bold })],
-  alignment: opts.align || AlignmentType.JUSTIFIED,
+  alignment: opts.align || AlignmentType.LEFT,
   heading: opts.heading,
   keepNext: opts.keepNext,
   spacing: { after: opts.after ?? 120, before: opts.before ?? 0 },
@@ -151,14 +377,19 @@ const bullet = (t) => new Paragraph({
   numbering: { reference: 'bullets', level: 0 },
   spacing: { after: 80 },
 });
+// Each numbered list passes its own `instance` so numbering restarts at 1.
+const numbered = (t, instance) => new Paragraph({
+  children: Array.isArray(t) ? t : [sans(t, { size: 20, color: COLOR_INK })],
+  numbering: { reference: 'steps', level: 0, instance },
+  spacing: { after: 100 },
+});
 
-// Callout box helper
 const callout = (title, bodyText) => new Table({
   rows: [new TableRow({ children: [
     new TableCell({
       children: [
-        new Paragraph({ children: [sans(title, { size: 20, bold: true, color: COLOR_NAVY })], spacing: { after: 80 } }),
-        new Paragraph({ children: Array.isArray(bodyText) ? bodyText : [sans(bodyText, { size: 20, color: COLOR_INK })], alignment: AlignmentType.JUSTIFIED })
+        new Paragraph({ children: [sans(title, { size: 22, bold: true, color: COLOR_NAVY })], spacing: { after: 80 } }),
+        new Paragraph({ children: Array.isArray(bodyText) ? bodyText : [sans(bodyText, { size: 20, color: COLOR_INK })] }),
       ],
       shading: { type: ShadingType.CLEAR, color: 'auto', fill: COLOR_GOLD_SOFT },
       margins: { top: 200, bottom: 200, left: 200, right: 200 },
@@ -167,9 +398,9 @@ const callout = (title, bodyText) => new Table({
         top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
         right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
         bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-      }
-    })
-  ]})],
+      },
+    }),
+  ] })],
   width: { size: 100, type: WidthType.PERCENTAGE },
 });
 
@@ -183,23 +414,18 @@ function cell(text, opts = {}) {
     })],
     shading: opts.fill ? { type: ShadingType.CLEAR, color: 'auto', fill: opts.fill } : undefined,
     verticalAlign: 'center',
-    margins: { top: 120, bottom: 120, left: 120, right: 120 },
-    borders: opts.noBorders ? {
-      top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-      bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-      left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-      right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-    } : undefined,
+    margins: { top: 100, bottom: 100, left: 100, right: 100 },
   });
 }
 
 function table(rows, opts = {}) {
+  const size = opts.size;
   return new Table({
     rows: rows.map((cells, idx) => new TableRow({
       children: cells.map(c =>
         idx === 0
-          ? cell(c, { bold: true, color: COLOR_NAVY, fill: 'FFFFFF', ...opts.headerCell })
-          : cell(c, { fill: idx % 2 === 0 ? COLOR_CREAM : 'FFFFFF', ...opts.bodyCell })
+          ? cell(c, { bold: true, color: COLOR_NAVY, fill: 'FFFFFF', size })
+          : cell(c, { fill: idx % 2 === 0 ? COLOR_CREAM : 'FFFFFF', size })
       ),
       tableHeader: idx === 0,
     })),
@@ -217,206 +443,204 @@ function table(rows, opts = {}) {
 
 const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
 
-// ─── Date helpers (dynamic) ──────────────────────────────────────────────────
-const TODAY = new Date();
-const fmtDate = (offsetDays) => {
-  const d = new Date(TODAY.getTime() + offsetDays * 86400000);
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+// Debt-row helpers shared by several sections.
+const clearedText = (d) => {
+  if (d.type === 'hecs') return 'Through tax';
+  if (d.clearedMonth === null) return 'After 30+ years';
+  return monthLabel(d.clearedMonth);
 };
-const fmtDateShort = (offsetDays) => {
-  const d = new Date(TODAY.getTime() + offsetDays * 86400000);
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-};
+const rateText = (d) => d.type === 'hecs' ? `Indexed (~${HECS_INDEXATION_PCT}%)` : fmtPct(d.rate);
 
-// ─── Sections ────────────────────────────────────────────────────────────────
+// ─── Page 1: cover + plan at a glance ────────────────────────────────────────
+function buildThisWeek(state, derived) {
+  const items = [];
+  const firstPriority = derived.debtOrder.find(d => d.priority);
+  if (derived.surplus < 100) {
+    items.push('List every fixed cost (insurance, phone, subscriptions, loans) and cancel or renegotiate at least one this week.');
+    items.push('Call the National Debt Helpline on 1800 007 007 if minimum repayments are hard to meet. It is free and confidential.');
+  } else if (derived.bufferMonths < RULES.MIN_BUFFER_MONTHS) {
+    items.push(`Open a separate high-interest savings account and set an automatic transfer of ${fmt(derived.surplus)} each month (or the equivalent each payday).`);
+  } else if (firstPriority) {
+    items.push(`Set up an automatic extra payment of ${fmt(derived.surplus)}/month on your ${niceType(firstPriority.type)}, on top of the minimum.`);
+  } else {
+    items.push(`Set up an automatic transfer of ${fmt(derived.surplus > 0 ? derived.surplus : 0)}/month for the step shown above.`);
+  }
+  if (firstPriority && firstPriority.rate > 0) {
+    items.push(`Call your ${niceType(firstPriority.type)} provider and ask for a lower rate or a balance-transfer offer (script in the toolkit at the end of this plan).`);
+  }
+  if (derived.debtMins > 0) {
+    items.push(`Keep every minimum repayment on autopay (${fmt(derived.debtMins)}/month in total). A missed payment costs more in fees and interest than this plan saves.`);
+  }
+  items.push(`Put ${fmtDate(90)} in your calendar to re-run the free tool with updated numbers.`);
+  return items.slice(0, 4);
+}
+
 function buildCover(state, derived) {
-  const isSample = false;
-  const top = derived.topMove;
+  const plan = derived.plan;
+  const who = (state.name && String(state.name).trim()) || state.email || 'You';
 
-  const cover = [
-    spacer(1200),
-    new Paragraph({
-      children: [sans('CONFIDENTIAL', { size: 18, color: COLOR_ACCENT, bold: true })],
-      alignment: AlignmentType.RIGHT,
-    }),
-    new Paragraph({
-      children: [serif('MoneyMoves', { size: 64, bold: false, color: COLOR_NAVY })],
-      spacing: { before: 800, after: 0 },
-    }),
-    new Paragraph({
-      children: [serif('Financial Dossier', { size: 48, color: COLOR_INK_SOFT })],
-      spacing: { after: 400 },
-    }),
-    new Paragraph({
-      border: { top: { color: COLOR_LINE, space: 1, style: BorderStyle.SINGLE, size: 12 } },
-      spacing: { before: 200, after: 200 }
-    }),
-    p(`Prepared for: ${state.email || 'You'}`, { size: 20, color: COLOR_INK }),
-    p(`Date: ${fmtDate(0)}`, { size: 20, color: COLOR_INK }),
-    pageBreak(),
-  ];
-
-  if (isSample) {
-    cover.push(new Paragraph({
-      children: [sans('SAMPLE — DRAFT REPORT (illustrative data, not a real client report)', {
-        size: 20, bold: true, color: COLOR_RED,
-      })],
-      alignment: AlignmentType.CENTER,
-      shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'FFF0F0' },
-      spacing: { after: 280, before: 280 },
-    }));
-  }
-
-  cover.push(
-    h1('Executive Summary'),
-    p('Based on the numbers provided, here is your 90-day action plan.', { after: 240 }),
-    
-    h3('Primary Objective'),
-    callout(top.title, top.shortBody),
-    spacer(200),
-    
-    h3('Secondary Objectives & Delays'),
-    bullet(derived.waitItem),
-    spacer(120),
-    
-    h3('Review Horizon'),
-    bullet(`Re-run analysis on ${fmtDate(90)} with updated inputs. Deterministic engine refresh takes < 2 minutes.`),
-    spacer(240),
-    
-    h3('Cost of Inaction'),
-    callout('Avoidable Interest', [
-      sans('If minimums are maintained and recommended sequence is ignored, the model estimates an avoidable cost of ', { size: 20 }),
-      sans(fmt(derived.costOfDoingNothing), { size: 20, bold: true, color: COLOR_RED }),
-      sans(` over the next 5 years (approx. ${derived.costOfDoingNothingPerWeek} per week).`, { size: 20 }),
-    ]),
-    spacer(120),
-    small('Methodology: Total interest paid on highest-rate debts under minimum payments vs. avalanche sequence with recommended extra payment. Assumes 60-month horizon.'),
-    pageBreak(),
-  );
-  return cover;
-}
-
-function build12MonthMap(state, derived) {
-  const surplus = derived.surplus;
-  const target = derived.bufferTarget;
-  const carSaveLabel = (state.car && state.car.considering === 'yes') ? 'Car / save' : 'Invest / save';
-  const headerRow = ['Month', 'Income', 'Essentials', 'Surplus', 'Buffer', 'Debt', carSaveLabel, 'Buffer (cum)'];
-  const bodyRows = [];
-
-  // Dynamic simulation: phase A (40/40/20) until buffer hits target, then phase B.
-  let bufferBalance = state.savings;
-  const hasDebts = (state.debts || []).length > 0;
-  let firstPhaseBMonth = null;
-
-  for (let m = 1; m <= 12; m++) {
-    let toBuffer, toDebt, toCar;
-    if (bufferBalance < target) {
-      toBuffer = Math.max(0, surplus * 0.4);
-      toDebt = Math.max(0, surplus * 0.4);
-      toCar = Math.max(0, surplus * 0.2);
-      // Cap the buffer top-up at target and redirect the overshoot.
-      if (bufferBalance + toBuffer > target) {
-        const overshoot = bufferBalance + toBuffer - target;
-        toBuffer -= overshoot;
-        if (hasDebts) toDebt += overshoot; else toCar += overshoot;
-      }
+  const keyDates = [['Milestone', 'When', 'Detail']];
+  keyDates.push(['1-month emergency buffer', monthLabel(plan.milestones.buffer1), fmt(plan.oneMonth)]);
+  for (const d of derived.debtOrder) {
+    if (d.type === 'hecs') {
+      keyDates.push(['HECS / HELP', 'Through tax', `${fmt(d.balance)}, no extra repayments needed`]);
     } else {
-      if (firstPhaseBMonth === null) firstPhaseBMonth = m;
-      toBuffer = 0;
-      toDebt = hasDebts ? Math.max(0, surplus * 0.6) : 0;
-      toCar = Math.max(0, surplus * (hasDebts ? 0.4 : 1.0));
+      keyDates.push([`${cap(niceType(d.type))} cleared`, clearedText(d), `${fmt(d.balance)} at ${fmtPct(d.rate)}`]);
     }
-    bufferBalance += toBuffer;
-    bodyRows.push([
-      `M${m}`,
-      fmt(state.income),
-      fmt(state.expenses),
-      fmt(surplus),
-      fmt(toBuffer),
-      fmt(toDebt),
-      fmt(toCar),
-      fmt(bufferBalance),
-    ]);
   }
+  keyDates.push(['3-month emergency buffer', monthLabel(plan.milestones.buffer3), fmt(plan.threeMonth)]);
 
-  const transitionNote = firstPhaseBMonth
-    ? `Your buffer reaches the ${fmt(target)} target around month ${firstPhaseBMonth}. From that point, the allocation switches to 60% debt / 40% car-or-savings.`
-    : `Based on your surplus, you do not reach the ${fmt(target)} buffer target within 12 months — the table stays in Phase A throughout.`;
+  const out = [
+    new Paragraph({ children: [sans('CONFIDENTIAL', { size: 16, color: COLOR_ACCENT, bold: true })], alignment: AlignmentType.RIGHT }),
+    new Paragraph({ children: [serif('Your Money Plan', { size: 52, color: COLOR_NAVY })], spacing: { before: 200, after: 60 } }),
+    p([sans(`Prepared for ${who}  ·  ${fmtDate(0)}`, { size: 20, color: COLOR_INK_SOFT })], { after: 280 }),
 
-  return [
-    h1('2. Your 12-month cash map'),
-    p('How every dollar of surplus gets allocated, month by month. The allocation is dynamic: it transitions automatically once your buffer hits the 3-month target.', { after: 200 }),
-    h3('Allocation rules in this plan'),
-    bullet(`Phase A (buffer < ${fmt(target)}): 40% buffer top-up, 40% debt acceleration, 20% car / savings.`),
-    bullet(`Phase B (buffer ≥ ${fmt(target)}): 0% buffer, 60% debt, 40% car / savings (or 100% car / savings if no debts).`),
-    bullet(transitionNote),
+    h3('Your first move'),
+    callout(derived.topMove.title, derived.topMove.shortBody),
     spacer(160),
-    table([headerRow, ...bodyRows]),
-    spacer(160),
-    small('Tip: this allocation assumes income and essentials stay constant. If your income changes, re-run the free tool with your new numbers and request a refreshed plan within 90 days at no extra charge.'),
+
+    h3('Key dates on your numbers'),
+    table(keyDates),
+    small('Dates assume your income and costs stay as entered and you follow the steps in order. "Through tax" means HECS is deducted from your pay by the ATO.'),
+    spacer(120),
+
+    h3('Do these this week'),
+    ...buildThisWeek(state, derived).map(t => numbered(t, 1)),
     pageBreak(),
   ];
+  return out;
 }
 
-function buildDebtRoadmap(state, derived) {
-  const order = derived.debtOrder;
-  if (!order.length) {
-    return [
-      h1('3. Debt roadmap'),
-      p('You have no consumer debts to roadmap. Treat this as a strength: every dollar of surplus can go to buffer or investing.', { after: 240 }),
-      pageBreak(),
-    ];
-  }
-
-  const rows = [
-    ['Order', 'Debt type', 'Balance', 'Rate', 'Tier', 'Months to clear', 'Total interest'],
-    ...order.map((d, i) => [
-      String(i + 1),
-      NICE_TYPE[d.type] || d.type,
-      fmt(d.balance),
-      fmtPct(d.rate),
-      d.tier,
-      d.monthsToClear ? String(d.monthsToClear) : '—',
-      fmt(d.totalInterest),
-    ]),
-  ];
-
+// ─── How the plan works + cost of inaction ───────────────────────────────────
+function buildPlanLogic(state, derived, n) {
   const sec = [
-    h1('3. Debt roadmap'),
-    p('The order to attack your debts and what each will cost you. Highest-rate first (the avalanche method) minimises total interest paid.', { after: 200 }),
-    table(rows),
-    spacer(200),
-    h3('What this saves you'),
-    p([
-      arial('Following the avalanche order vs. paying everything down equally saves you approximately ', { size: 22 }),
-      arial(fmt(derived.avalancheSaving), { size: 22, bold: true, color: COLOR_NAVY }),
-      arial(' in interest over the life of these debts.', { size: 22 }),
-    ]),
-    small(`Methodology: avalanche = monthly minimums + recommended extra (${fmt(derived.monthlyAllocation.toDebt)}/mo) applied to highest-rate debt first, rolled to next debt on payoff. Equal-split = same total extra distributed proportionally across all debts.`),
+    h1(`${n}. How your plan works`),
+    p(`Every month: take-home ${fmt(state.income)} − living costs ${fmt(state.expenses)} − debt minimums ${fmt(derived.debtMins)} = `, { after: 0 }),
+    p([sans(`${fmt(derived.surplus)} a month to put to work.`, { size: 24, bold: true, color: COLOR_NAVY })], { after: 200 }),
+    h3('The order your surplus goes in'),
+    numbered(`Emergency buffer up to 1 month of costs (${fmt(derived.plan.oneMonth)}). This stops a surprise bill landing on a credit card.`, 2),
+    numbered(`High-rate debt (${RULES.HIGH_RATE_THRESHOLD}%+) and ATO debt, most expensive first. Every dollar here earns that interest rate back, guaranteed.`, 2),
+    numbered(`Emergency buffer up to 3 months (${fmt(derived.plan.threeMonth)}).`, 2),
+    numbered('Any remaining consumer debt, most expensive first. When a debt is cleared, its minimum repayment joins the next step.', 2),
+    numbered(derived.hasCar ? 'Everything after that: your car deposit and savings.' : 'Everything after that: savings and investing.', 2),
+    small('HECS / HELP is repaid automatically through your tax once you earn over the threshold, so it never gets extra repayments here. Home loans keep their normal schedule; extra cash for a home loan usually works best in an offset account.'),
+    spacer(120),
+    h3('The secondary rule'),
+    bullet(derived.waitItem),
   ];
 
-  // HECS section ONLY if user has a HECS debt.
-  const hasHECS = order.some(d => d.type === 'hecs');
-  if (hasHECS) {
+  const hasInterestDebt = derived.debtOrder.some(d => d.type !== 'hecs' && d.rate > 0 && d.balance > 0);
+  if (hasInterestDebt && derived.surplus >= 100) {
     sec.push(
-      spacer(200),
-      h3('Why HECS sits last in your plan'),
-      p('HECS / HELP debt is indexed to CPI but charges no interest in the conventional sense. Voluntary repayments rarely beat the after-tax return on investing or paying off interest-bearing debt. Confirm the current indexation rate at studyassist.gov.au before deciding.')
+      spacer(160),
+      h3('The cost of doing nothing'),
+      callout('Interest you avoid by following this plan', [
+        sans('Paying only the minimums, you would pay ', { size: 20 }),
+        sans(fmt(derived.baseInterest5y), { size: 20, bold: true }),
+        sans(' in interest over the next 5 years. Following this plan, you pay ', { size: 20 }),
+        sans(fmt(derived.planInterest5y), { size: 20, bold: true }),
+        sans('. That is ', { size: 20 }),
+        sans(fmt(derived.costOfInaction), { size: 20, bold: true, color: COLOR_RED }),
+        sans(` (about ${fmt(derived.costOfInaction / (5 * 52))} a week) you keep.`, { size: 20 }),
+      ]),
+      small('How we worked this out: both figures come from a month-by-month calculation of your actual balances, rates and minimums, with interest charged monthly. HECS indexation is not counted as interest.'),
     );
   }
   sec.push(pageBreak());
   return sec;
 }
 
-function buildCarScenarios(state, derived) {
-  if (state.car.considering !== 'yes' || !state.car.price) {
+// ─── 12-month cash map ───────────────────────────────────────────────────────
+function build12MonthMap(state, derived, n) {
+  const saveLabel = derived.hasCar ? 'To car / savings' : 'To savings';
+  const header = ['Month', 'Surplus', 'To buffer', 'To debt', saveLabel, 'Buffer', 'Debt left', 'Focus'];
+  const rows = derived.plan.rows.slice(0, 12).map(r => [
+    monthLabel(r.m),
+    fmt(r.surplus),
+    r.fromBuffer > 0 ? `−${fmt(r.fromBuffer)}` : fmt(r.toBuffer),
+    fmt(r.toDebt),
+    fmt(r.toSave),
+    fmt(r.buffer),
+    fmt(r.debtLeft),
+    r.focus.join(' → ') || '—',
+  ]);
+  const freed = derived.plan.rows.slice(0, 12).some(r => r.surplus > derived.surplus + 0.5);
+
+  return [
+    h1(`${n}. Your 12-month cash map`),
+    p(`Where each month's surplus goes. Surplus = take-home ${fmt(state.income)} − living costs ${fmt(state.expenses)} − debt minimums actually due that month.`, { after: 160 }),
+    table([header, ...rows], { size: 16 }),
+    spacer(120),
+    ...(freed ? [small('Your surplus rises in later months because a cleared debt no longer needs its minimum repayment; that money moves to the next step.')] : []),
+    small('"Debt left" excludes HECS / HELP. Figures assume income and costs stay as entered. If they change, re-run the free tool for an updated plan.'),
+    pageBreak(),
+  ];
+}
+
+// ─── Debt roadmap ────────────────────────────────────────────────────────────
+function buildDebtRoadmap(state, derived, n) {
+  const order = derived.debtOrder;
+  if (!order.length) {
     return [
-      h1('4. Car decision'),
-      p('You did not flag a car purchase in your inputs, so this section is a placeholder. If your situation changes, re-run the free tool and request a refreshed plan.', { after: 240 }),
+      h1(`${n}. Debt roadmap`),
+      p('You have no debts to pay off. Every dollar of surplus can go to your buffer and then savings, which is a strong position.', { after: 240 }),
       pageBreak(),
     ];
   }
 
+  const rows = [
+    ['Order', 'Debt', 'Balance', 'Rate', 'Cleared by', 'Interest you pay', 'Minimums only'],
+    ...order.map((d, i) => {
+      if (d.type === 'hecs') {
+        return [String(i + 1), 'HECS / HELP', fmt(d.balance), rateText(d), 'Through tax', 'None (indexation only)', 'Same'];
+      }
+      const minOnly = d.minimumsOnlyClearedMonth === null
+        ? (d.min > 0 ? 'Never at current minimum' : 'No minimum entered')
+        : `${monthLabel(d.minimumsOnlyClearedMonth)}, ${fmt(d.minimumsOnlyInterest)} interest`;
+      return [String(i + 1), cap(niceType(d.type)), fmt(d.balance), rateText(d), clearedText(d), fmt(d.interestPaid), minOnly];
+    }),
+  ];
+
+  const sec = [
+    h1(`${n}. Debt roadmap`),
+    p('The order to pay your debts off, when each one is gone, and what it costs you, compared with paying only the minimums.', { after: 200 }),
+    table(rows, { size: 16 }),
+    spacer(160),
+  ];
+
+  if (derived.avalancheSaving !== null) {
+    sec.push(
+      h3('Why this order'),
+      p([
+        sans('Paying the most expensive debt first, instead of splitting extra money evenly across your debts, saves you ', { size: 20 }),
+        sans(fmt(derived.avalancheSaving), { size: 20, bold: true, color: COLOR_NAVY }),
+        sans(' in interest.', { size: 20 }),
+      ]),
+    );
+  }
+
+  const noMin = order.filter(d => d.type !== 'hecs' && d.rate > 0 && !(d.min > 0));
+  if (noMin.length) {
+    sec.push(small(`No minimum repayment was entered for your ${noMin.map(d => niceType(d.type)).join(', ')}, so interest builds on it until the plan reaches it. Check the minimum on your statement and re-run the tool.`));
+  }
+
+  if (order.some(d => d.type === 'hecs')) {
+    sec.push(
+      spacer(160),
+      h3('Why HECS / HELP gets no extra repayments'),
+      p(`HECS / HELP is indexed once a year (${HECS_INDEXATION_PCT}% for June 2026, the lower of CPI and wage growth) but charges no interest. It is repaid automatically through your tax once your income passes the repayment threshold. Paying it early rarely beats paying off interest-bearing debt or building savings. Confirm the current rate at studyassist.gov.au.`),
+    );
+  }
+  sec.push(
+    spacer(120),
+    small('How we worked this out: month by month, each debt is charged interest at its rate, then its minimum is paid, then the plan\'s extra money goes to the debt listed first. "Minimums only" runs the same calculation with no extra money.'),
+    pageBreak(),
+  );
+  return sec;
+}
+
+// ─── Car (only when a car is planned) ────────────────────────────────────────
+function buildCarScenarios(state, derived, n) {
   const car = state.car;
   const principal = car.price - car.deposit;
   const dealerPmt = calcMonthlyMortgage(principal, car.dealerRate, car.term);
@@ -425,10 +649,11 @@ function buildCarScenarios(state, derived) {
   const bankTotal = bankPmt * car.term * 12;
   const saving = dealerTotal - bankTotal;
 
-  // Wait scenarios: deposit grows by 20% of monthly surplus (matches Section 2 Phase A car/save rule).
-  const monthlyToCar = derived.monthlyAllocation.toCar;
-  const wait6Deposit = car.deposit + monthlyToCar * 6;
-  const wait12Deposit = car.deposit + monthlyToCar * 12;
+  // Deposit growth while waiting = what the plan actually sets aside for the car in those months.
+  const set6 = derived.plan.rows.slice(0, 6).reduce((s, r) => s + r.toSave, 0);
+  const set12 = derived.plan.rows.slice(0, 12).reduce((s, r) => s + r.toSave, 0);
+  const wait6Deposit = car.deposit + set6;
+  const wait12Deposit = car.deposit + set12;
   const wait6Price = car.price * (1 - RUNNING_COSTS.waitHold6mo);
   const wait12Price = car.price * (1 - RUNNING_COSTS.waitHold12mo);
   const wait6Principal = Math.max(0, wait6Price - wait6Deposit);
@@ -439,377 +664,279 @@ function buildCarScenarios(state, derived) {
   const wait12Total = wait12Pmt * car.term * 12;
 
   const rows = [
-    ['Scenario', 'Deposit', 'Loan size', 'Monthly', 'Total cost', 'Vs buy-now (dealer)'],
-    ['Buy now (dealer)', fmt(car.deposit), fmt(principal), fmt(dealerPmt), fmt(dealerTotal), '—'],
-    ['Buy now (bank)', fmt(car.deposit), fmt(principal), fmt(bankPmt), fmt(bankTotal), fmt(-saving)],
+    ['Scenario', 'Deposit', 'Loan size', 'Monthly', 'Total repaid', 'Vs dealer now'],
+    ['Buy now (dealer finance)', fmt(car.deposit), fmt(principal), fmt(dealerPmt), fmt(dealerTotal), '—'],
+    ['Buy now (bank loan)', fmt(car.deposit), fmt(principal), fmt(bankPmt), fmt(bankTotal), fmt(-saving)],
     ['Wait 6 months (bank)', fmt(wait6Deposit), fmt(wait6Principal), fmt(wait6Pmt), fmt(wait6Total), fmt(wait6Total - dealerTotal)],
     ['Wait 12 months (bank)', fmt(wait12Deposit), fmt(wait12Principal), fmt(wait12Pmt), fmt(wait12Total), fmt(wait12Total - dealerTotal)],
   ];
 
   return [
-    h1('4. Car decision — four scenarios'),
-    p(`We modelled four ways to acquire this car and what each costs over your chosen ${car.term}-year term. Wait scenarios assume your monthly car/save allocation (${fmt(monthlyToCar)}) goes toward a bigger deposit.`, { after: 200 }),
+    h1(`${n}. Car decision: four scenarios`),
+    p(`Four ways to buy this car and what each costs over your ${car.term}-year term.`, { after: 200 }),
     table(rows),
     spacer(200),
-    h3('Assumptions in the wait scenarios'),
-    bullet(`Vehicle price assumed to fall ~${(RUNNING_COSTS.waitHold6mo * 100).toFixed(0)}% over 6 months (${fmt(car.price)} → ${fmt(wait6Price)}) and ~${(RUNNING_COSTS.waitHold12mo * 100).toFixed(0)}% over 12 months (${fmt(car.price)} → ${fmt(wait12Price)}). Real depreciation varies by make/model.`),
-    bullet(`Deposit grows by ${fmt(monthlyToCar)}/month — the same 20% car/save allocation from Section 2.`),
-    bullet(`Bank rate (${fmtPct(car.bankRate)}) used for all wait scenarios on the assumption you would not return to dealer financing if you had time to shop.`),
+    h3('Assumptions'),
+    bullet(`Price assumed to fall about ${(RUNNING_COSTS.waitHold6mo * 100).toFixed(0)}% over 6 months (${fmt(car.price)} → ${fmt(wait6Price)}) and about ${(RUNNING_COSTS.waitHold12mo * 100).toFixed(0)}% over 12 months (→ ${fmt(wait12Price)}). Real depreciation varies by make and model.`),
+    bullet(set12 > 0
+      ? `While waiting, the deposit grows by what your plan sets aside for the car: ${fmt(set6)} in 6 months and ${fmt(set12)} in 12 months.`
+      : 'Your plan sends all surplus to your buffer and debts for the next 12 months, so the deposit does not grow while you wait.'),
+    bullet(`The bank rate (${fmtPct(car.bankRate)}) is used for the wait scenarios, on the assumption you would shop around with more time.`),
     spacer(200),
     h3('The headline number'),
     p([
-      arial('Choosing the bank loan over the dealer loan saves you ', { size: 22 }),
-      arial(fmt(saving), { size: 22, bold: true, color: COLOR_NAVY }),
-      arial(' over the loan term. Waiting 6-12 months changes the picture only modestly because depreciation eats some of the saving — but it materially reduces your monthly repayment, which improves your buffer resilience.', { size: 22 }),
+      sans('Choosing the bank loan over dealer finance saves ', { size: 22 }),
+      sans(fmt(saving), { size: 22, bold: true, color: COLOR_NAVY }),
+      sans(' over the loan term.', { size: 22 }),
     ]),
-    spacer(160),
-    small('Comparison-rate caveat: the dealer rate above is the nominal rate you entered. Australian comparison rates (AAPR) include fees and can be 1-2 percentage points higher than the headline. Always ask for the comparison rate in writing before signing.'),
+    small('The dealer rate is the rate you entered. The comparison rate, which includes fees, can be noticeably higher. Always ask for the comparison rate in writing before signing.'),
     pageBreak(),
   ];
 }
 
-function buildOwnershipCost(state, derived) {
-  if (state.car.considering !== 'yes' || !state.car.price) {
-    return [
-      h1('5. Total cost of ownership'),
-      p('No car flagged — this section is a placeholder.', { after: 240 }),
-      pageBreak(),
-    ];
-  }
-
+function buildOwnershipCost(state, derived, n) {
   const car = state.car;
   const principal = car.price - car.deposit;
   const monthlyLoan = calcMonthlyMortgage(principal, car.bankRate, car.term);
   const annualKms = (state._post_purchase && state._post_purchase.annualKms) || 15000;
   const fuelAnnual = (annualKms / 100) * RUNNING_COSTS.fuelLitresPer100km * RUNNING_COSTS.fuelPricePerLitre;
   const depreciationAnnual = car.price * RUNNING_COSTS.depreciationPctYr1;
-  const totalAnnual =
-    monthlyLoan * 12 +
-    RUNNING_COSTS.insuranceAnnual +
-    RUNNING_COSTS.regoAnnual +
-    RUNNING_COSTS.servicingAnnual +
-    fuelAnnual +
-    depreciationAnnual;
+  const totalAnnual = monthlyLoan * 12 + RUNNING_COSTS.insuranceAnnual + RUNNING_COSTS.regoAnnual
+    + RUNNING_COSTS.servicingAnnual + fuelAnnual + depreciationAnnual;
   const totalWeekly = totalAnnual / 52;
-  const totalMonthly = totalAnnual / 12;
-  const pctOfMonthly = (totalMonthly / state.income) * 100;
+  const pctOfIncome = ((totalAnnual / 12) / state.income) * 100;
 
   const rows = [
-    ['Cost component', 'Annual', 'Weekly', 'Notes'],
+    ['Cost', 'Per year', 'Per week', 'Notes'],
     ['Loan repayment (bank)', fmt(monthlyLoan * 12), fmt((monthlyLoan * 12) / 52), `${fmtPct(car.bankRate)} over ${car.term} years`],
-    ['Comprehensive insurance', fmt(RUNNING_COSTS.insuranceAnnual), fmt(RUNNING_COSTS.insuranceAnnual / 52), 'A$30-40k vehicle, mid-cohort driver'],
-    ['Registration + CTP', fmt(RUNNING_COSTS.regoAnnual), fmt(RUNNING_COSTS.regoAnnual / 52), 'VIC/NSW average; varies by state'],
-    ['Servicing + tyres', fmt(RUNNING_COSTS.servicingAnnual), fmt(RUNNING_COSTS.servicingAnnual / 52), 'Logbook + 2 minor services'],
-    ['Fuel', fmt(fuelAnnual), fmt(fuelAnnual / 52), `${annualKms.toLocaleString()} km/yr @ ${RUNNING_COSTS.fuelLitresPer100km} L/100km @ A$${RUNNING_COSTS.fuelPricePerLitre}/L`],
-    ['Depreciation (Year 1)', fmt(depreciationAnnual), fmt(depreciationAnnual / 52), `~${(RUNNING_COSTS.depreciationPctYr1 * 100).toFixed(0)}% in Year 1; ~${(RUNNING_COSTS.depreciationPctYr2plus * 100).toFixed(0)}%/yr after`],
-    ['TOTAL — Year 1', fmt(totalAnnual), fmt(totalWeekly), `${pctOfMonthly.toFixed(1)}% of monthly take-home`],
+    ['Comprehensive insurance', fmt(RUNNING_COSTS.insuranceAnnual), fmt(RUNNING_COSTS.insuranceAnnual / 52), 'A$30–40k car, mid-range driver'],
+    ['Registration + CTP', fmt(RUNNING_COSTS.regoAnnual), fmt(RUNNING_COSTS.regoAnnual / 52), 'Varies by state'],
+    ['Servicing + tyres', fmt(RUNNING_COSTS.servicingAnnual), fmt(RUNNING_COSTS.servicingAnnual / 52), 'Logbook + minor services'],
+    ['Fuel', fmt(fuelAnnual), fmt(fuelAnnual / 52), `${annualKms.toLocaleString()} km/yr at ${RUNNING_COSTS.fuelLitresPer100km} L/100km, A$${RUNNING_COSTS.fuelPricePerLitre}/L`],
+    ['Depreciation (year 1)', fmt(depreciationAnnual), fmt(depreciationAnnual / 52), `~${(RUNNING_COSTS.depreciationPctYr1 * 100).toFixed(0)}% in year 1, ~${(RUNNING_COSTS.depreciationPctYr2plus * 100).toFixed(0)}%/yr after`],
+    ['Total, year 1', fmt(totalAnnual), fmt(totalWeekly), `${pctOfIncome.toFixed(1)}% of take-home pay`],
   ];
 
   return [
-    h1('5. Total cost of ownership'),
-    p('This is the number most car buyers underestimate. The financing cost is just one of six.', { after: 200 }),
+    h1(`${n}. What the car really costs`),
+    p('The repayment is only one of six costs. This is the figure most buyers underestimate.', { after: 200 }),
     table(rows),
     spacer(200),
-    h3('What this means for your cashflow'),
     p([
-      arial('All-in, this car will cost about ', { size: 22 }),
-      arial(fmt(totalWeekly) + ' per week', { size: 22, bold: true }),
-      arial(` in Year 1 — roughly ${pctOfMonthly.toFixed(1)}% of your monthly take-home income.`, { size: 22 }),
+      sans('All-in, this car costs about ', { size: 22 }),
+      sans(`${fmt(totalWeekly)} a week`, { size: 22, bold: true }),
+      sans(` in year 1, roughly ${pctOfIncome.toFixed(1)}% of your take-home pay.`, { size: 22 }),
     ]),
-    p('Australian financial educators commonly recommend keeping total transport costs below 15% of net income. Above 20% and you will struggle to build buffer, repay debt, or invest at the same time.', { after: 200 }),
-    small('All running-cost figures are FY 2025-26 illustrative averages from public Australian sources (Budget Direct, RACV, Finder). Your actual costs will vary by vehicle, postcode, driver profile, and km driven. Refresh annually.'),
+    small('Running costs are FY2025-26 illustrative averages from public Australian sources (Budget Direct, RACV, Finder). Yours will vary by car, postcode, driver and kilometres.'),
     pageBreak(),
   ];
 }
 
-function buildStressTest(state, derived) {
-  const monthlyEssentials = state.expenses;
-  const baseSurplus = derived.surplus;
+// ─── Stress tests ────────────────────────────────────────────────────────────
+function buildStressTest(state, derived, n) {
+  const essentials = derived.monthlyEssentials;          // living costs + minimums
+  const debts = state.debts || [];
 
-  const carPrincipal = state.car.considering === 'yes' ? state.car.price - state.car.deposit : 0;
-  const baseCarPmt = state.car.considering === 'yes' ? calcMonthlyMortgage(carPrincipal, state.car.bankRate, state.car.term) : 0;
-  const stressCarPmt = state.car.considering === 'yes' ? calcMonthlyMortgage(carPrincipal, state.car.bankRate + 2, state.car.term) : 0;
-  const ratesDelta = (stressCarPmt - baseCarPmt) * 12;
+  const variable = debts.filter(d => VARIABLE_RATE_TYPES.includes(d.type) && d.balance > 0 && d.rate > 0);
+  const rateRiseMonthly = variable.reduce((s, d) => s + d.balance * RATE_RISE_PCT / 1200, 0);
+  let carRise = 0;
+  if (derived.hasCar) {
+    const principal = state.car.price - state.car.deposit;
+    carRise = calcMonthlyMortgage(principal, state.car.bankRate + RATE_RISE_PCT, state.car.term)
+            - calcMonthlyMortgage(principal, state.car.bankRate, state.car.term);
+  }
+  const rateImpact = variable.length || carRise > 0
+    ? `About ${fmt(rateRiseMonthly + carRise)} more a month (${[...variable.map(d => niceType(d.type)), ...(carRise > 0 ? ['planned car loan'] : [])].join(', ')})`
+    : 'None of your debts are variable-rate';
+  const rateMeaning = rateRiseMonthly + carRise > 0
+    ? `Surplus falls to ${fmt(derived.surplus - rateRiseMonthly - carRise)}; payoff dates move later`
+    : 'Little direct impact';
 
-  const stressIncome = state.income * 0.85;
-  const debtMins = (state.debts || []).reduce((s, d) => s + (d.min || 0), 0);
-  const stressSurplus = stressIncome - state.expenses - debtMins;
-
-  const emergencyHit = 3000;
-  const emergencyBufferAfter = state.savings - emergencyHit;
-  const emergencyMonthsAfter = emergencyBufferAfter / monthlyEssentials;
-
-  const unemploymentDeficit = monthlyEssentials * 3;
-  const survivalMargin = state.savings - unemploymentDeficit;
+  const debtMins = derived.debtMins;
+  const stressSurplus = state.income * 0.85 - state.expenses - debtMins;
+  const emergencyAfter = state.savings - 3000;
+  const emergencyMonths = emergencyAfter / Math.max(essentials, 1);
+  const jobLossNeed = essentials * 3;
+  const jobLossMargin = state.savings - jobLossNeed;
 
   const rows = [
-    ['Stress scenario', 'Trigger', 'Impact (your numbers)', 'What it means'],
-    ['Rates rise 2%', 'RBA tightens', state.car.considering === 'yes' ? `+${fmt(ratesDelta)} / yr on car loan` : 'No current variable loan modelled', state.car.considering === 'yes' ? 'Buffer fills more slowly; review rate type in your contract' : 'Limited direct impact'],
-    ['Income drops 15%', 'Reduced hours / role change', `Surplus ${fmt(baseSurplus)} → ${fmt(stressSurplus)}`, stressSurplus < 0 ? 'Plan fails — cut essentials or seek hardship support' : 'Plan timeline extends 3-6 months'],
-    ['Emergency expense A$3,000', 'Medical / dental / car repair', `Buffer ${fmt(state.savings)} → ${fmt(emergencyBufferAfter)}`, emergencyMonthsAfter < 1 ? 'Buffer back to Critical — pause all debt acceleration' : `Buffer at ${emergencyMonthsAfter.toFixed(1)} months — recoverable`],
-    ['3-month job loss', 'Redundancy / illness', `${fmt(survivalMargin)} ${survivalMargin >= 0 ? 'remaining' : 'shortfall'} after 3 months on essentials only`, survivalMargin >= 0 ? 'You survive on current buffer' : 'Risk of debt cycle — buffer-building is the single most important move'],
+    ['What happens', 'Impact on your numbers', 'What it means'],
+    [`Rates rise ${RATE_RISE_PCT}%`, rateImpact, rateMeaning],
+    ['Income drops 15%', `Surplus ${fmt(derived.surplus)} → ${fmt(stressSurplus)}`, stressSurplus < 0 ? 'Plan stops working: cut costs or seek hardship help' : 'Same steps, every date moves later'],
+    ['A$3,000 emergency bill', `Buffer ${fmt(state.savings)} → ${fmt(emergencyAfter)}`, emergencyAfter < 0 ? `Savings cover ${fmt(state.savings)}; the other ${fmt(-emergencyAfter)} would likely go on a card` : emergencyMonths < 1 ? 'Buffer back below 1 month: rebuild it first' : `Buffer still covers ${emergencyMonths.toFixed(1)} months`],
+    ['3 months without income', `You need ${fmt(jobLossNeed)} (costs + minimums)`, jobLossMargin >= 0 ? `Covered, with ${fmt(jobLossMargin)} to spare` : `${fmt(-jobLossMargin)} short`],
   ];
 
   return [
-    h1('6. Stress tests'),
-    p('What happens if the world doesn\'t go to plan. Each row uses your numbers, not generic averages.', { after: 200 }),
+    h1(`${n}. Stress tests`),
+    p('What happens if things don\'t go to plan, using your numbers.', { after: 200 }),
     table(rows),
     spacer(200),
     h3('What this tells you'),
-    p(survivalMargin >= 0
-      ? 'You currently survive a 3-month job loss on your existing buffer. That is rare and worth defending — do not deplete the buffer for non-essential purchases until you have additional cushion.'
-      : 'You do not currently survive a 3-month job loss on your buffer alone. The single highest-leverage move is buffer-building before any debt acceleration or new car purchase.'),
-    spacer(160),
-    small('Caveats: the rate-rise scenario applies only to variable-rate loans. If your existing or planned car finance is fixed-rate, treat the +A$ figure as an indicator of refinance exposure when the fixed term ends. The income-drop scenario assumes essentials hold constant; in practice some essentials are negotiable (mobile, streaming, gym).'),
+    p(jobLossMargin >= 0
+      ? 'Your savings would carry you through three months without income. That is uncommon. Protect the buffer and avoid dipping into it for non-essentials.'
+      : `Your savings would not carry you through three months without income. Reaching the 3-month buffer (${monthLabel(derived.plan.milestones.buffer3)} on these numbers) fixes that.`),
+    spacer(120),
+    small('Rate rise: applies to debts whose rates usually move with the market (credit cards, personal loans, variable home loans). Fixed-rate loans only feel it when the fixed term ends. Income drop: assumes living costs stay the same; in practice some can be cut.'),
     pageBreak(),
   ];
 }
 
-function buildActionChecklist(state, derived) {
-  const items = [];
+// ─── Action checklist ────────────────────────────────────────────────────────
+// Days from today to the start of plan month m (for sorting dated checklist items).
+const daysUntilMonth = (m) => Math.round((new Date(TODAY.getFullYear(), TODAY.getMonth() + m, 1) - TODAY) / 86400000);
 
-  // Order: fastest-to-act first.
-  if (derived.debtOrder.length > 0) {
-    const top = derived.debtOrder[0];
-    const niceType = NICE_TYPE[top.type] || top.type;
-    items.push(`By ${fmtDateShort(7)}: log into your ${niceType} account and set up an extra ${fmt(derived.monthlyAllocation.toDebt)}/month payment on top of the minimum. This single move starts the avalanche immediately.`);
-    items.push(`By ${fmtDateShort(14)}: phone your ${niceType} provider and request a rate review or balance-transfer offer. Script: "I'm reviewing my finances and I'd like to know what rate I qualify for given my repayment history."`);
+function buildActionChecklist(state, derived, n) {
+  const plan = derived.plan;
+  const items = [];   // { day, text } — sorted by day; undated items go last in insertion order
+  const add = (day, text) => items.push({ day, text });
+  const firstPriority = derived.debtOrder.find(d => d.priority);
+  const UNDATED = Infinity;
+
+  if (derived.surplus >= 100) {
+    if (derived.bufferMonths < RULES.MIN_BUFFER_MONTHS) {
+      add(0, `This week: open a separate high-interest savings account (for example ING Savings Maximiser or Macquarie Savings) and automate ${fmt(derived.surplus)}/month into it until it holds ${fmt(plan.oneMonth)} (${monthLabel(plan.milestones.buffer1)}).`);
+      if (firstPriority) {
+        add(daysUntilMonth(plan.milestones.buffer1), `${monthLabel(plan.milestones.buffer1)}: once the buffer is there, move the same automatic payment to your ${niceType(firstPriority.type)}, on top of the minimum. It is cleared by ${clearedText(firstPriority)}.`);
+      }
+    } else if (firstPriority) {
+      add(0, `This week: set up an automatic extra ${fmt(derived.surplus)}/month on your ${niceType(firstPriority.type)}, on top of the minimum. It is cleared by ${clearedText(firstPriority)}.`);
+    }
+    if (firstPriority && firstPriority.rate > 0) {
+      add(14, `Within 2 weeks: call your ${niceType(firstPriority.type)} provider and ask for a lower rate or a 0% balance-transfer offer. Every point off the rate brings the payoff date closer.`);
+    }
+    if (plan.milestones.buffer3 !== null && plan.milestones.buffer3 > 0) {
+      const next = derived.debtOrder.some(d => !NO_EXTRA_REPAYMENT_TYPES.includes(d.type) && d.clearedMonth > plan.milestones.buffer3)
+        ? 'your remaining debts' : (derived.hasCar ? 'your car deposit and savings' : 'savings and investing');
+      add(daysUntilMonth(plan.milestones.buffer3), `${monthLabel(plan.milestones.buffer3)}: your buffer reaches 3 months (${fmt(plan.threeMonth)}). From then on, surplus goes to ${next}.`);
+    }
+  } else {
+    add(0, 'This week: list every fixed cost and cancel or renegotiate at least one (insurance, phone, subscriptions, refinancing).');
+    add(0, 'If minimum repayments are hard to meet, call the National Debt Helpline (1800 007 007). It is free and confidential.');
   }
 
-  if (derived.bufferShortfall > 0) {
-    items.push(`By ${fmtDateShort(30)}: open a separate high-interest savings account (e.g. ING Savings Maximiser, Macquarie Savings) and set a recurring transfer of ${fmt(derived.monthlyAllocation.toBuffer)}/month from your salary toward the ${fmt(derived.bufferTarget)} buffer target.`);
-  }
+  add(90, `${fmtDate(90)}: re-run the free tool at moneymoves-au.vercel.app with your updated numbers to get a fresh plan.`);
 
-  if (state.car.considering === 'yes') {
-    items.push('Before signing any car loan: get the comparison rate (AAPR) in writing from BOTH the dealer and your bank. The dealer\'s nominal rate is rarely the full picture.');
-    items.push('Compare insurance quotes from at least 3 providers (Budget Direct, AAMI, Bingle) — annual premiums vary by 30%+ for the same cover.');
+  if (derived.hasCar) {
+    add(UNDATED, 'Before signing any car loan: get the comparison rate in writing from both the dealer and your bank.');
+    add(UNDATED, 'Compare insurance quotes from at least 3 providers before you buy.');
     if (state.car.novated === 'yes') {
-      items.push('Speak to a salary-packaging specialist before committing to a novated lease. EVs under the LCT fuel-efficient threshold may qualify for FBT exemption — but eligibility depends on your employer.');
+      add(UNDATED, 'Speak to a salary-packaging specialist before committing to a novated lease. Eligibility and benefits depend on your employer and the vehicle.');
     }
   }
+  add(UNDATED, 'Before any big decision (refinancing, a new loan, a super top-up), consider one session with a fee-only licensed financial adviser, typically A$200–400.');
 
-  items.push(`On ${fmtDateShort(90)}: re-run the free tool with your updated numbers. Within 90 days of purchase, reply to the email this PDF arrived in to request a refreshed plan at no extra charge.`);
-  items.push('Optional but high-leverage: book one hour with a fee-only Australian financial adviser before any major decision (refinance, new loan, super top-up). Cost A$200-400; value typically 10x.');
+  const ordered = items.map((it, i) => ({ ...it, i })).sort((a, b) => (a.day - b.day) || (a.i - b.i));
 
   return [
-    h1('7. Your action checklist'),
-    p('Specific actions, in order, with dates. Tick them off as you go. Earliest-deadline items are listed first.', { after: 200 }),
-    ...items.map(t => bullet(t)),
-    spacer(280),
+    h1(`${n}. Your action checklist`),
+    p('In date order. Tick them off as you go.', { after: 200 }),
+    ...ordered.map(it => bullet(it.text)),
+    spacer(240),
     h3('Useful Australian resources'),
-    bullet([arial('ASIC Moneysmart: ', { size: 22, bold: true }), arial('moneysmart.gov.au — free, government-backed', { size: 22 })]),
-    bullet([arial('National Debt Helpline: ', { size: 22, bold: true }), arial('1800 007 007 — free, confidential, financial counsellors', { size: 22 })]),
-    bullet([arial('ATO payment plans: ', { size: 22, bold: true }), arial('ato.gov.au — set up online if you owe under A$100k', { size: 22 })]),
-    bullet([arial('Comparison rates explained: ', { size: 22, bold: true }), arial('moneysmart.gov.au/loans/comparison-rate', { size: 22 })]),
-    spacer(280),
-    small('Re-run the free tool any time at moneymoves-au.vercel.app — results update as your situation changes.'),
-    spacer(360),
+    bullet([sans('ASIC Moneysmart: ', { size: 20, bold: true }), sans('moneysmart.gov.au (free, government-backed)', { size: 20 })]),
+    bullet([sans('National Debt Helpline: ', { size: 20, bold: true }), sans('1800 007 007 (free, confidential financial counsellors)', { size: 20 })]),
+    bullet([sans('ATO payment plans: ', { size: 20, bold: true }), sans('ato.gov.au (set up online if you owe under A$100k)', { size: 20 })]),
+    bullet([sans('Comparison rates explained: ', { size: 20, bold: true }), sans('moneysmart.gov.au/loans/comparison-rate', { size: 20 })]),
+    spacer(320),
     p([
-      arial('General information only. ', { size: 18, italics: true, bold: true, color: COLOR_INK_SOFT }),
-      arial('This document is based on the inputs you provided and deterministic rules. It is not personal financial product advice and does not consider your full circumstances. Speak to a licensed Australian financial adviser before any major decision. Crisis support: National Debt Helpline 1800 007 007.', { size: 18, italics: true, color: COLOR_INK_SOFT }),
+      sans('General information only. ', { size: 18, italics: true, bold: true, color: COLOR_INK_SOFT }),
+      sans('This plan is based on the numbers you entered and fixed rules. It is not personal financial product advice and does not consider your full circumstances. Speak to a licensed Australian financial adviser before any major decision.', { size: 18, italics: true, color: COLOR_INK_SOFT }),
     ]),
   ];
 }
 
-// ─── Bonus Toolkits (Grand Slam Offer Value Stack) ───────────────────────────
+// ─── Toolkits ────────────────────────────────────────────────────────────────
 function buildBonusToolkits(state, derived) {
-  return [
+  const toolkits = [];
+
+  if (derived.hasCar) {
+    toolkits.push((k) => [
+      pageBreak(),
+      h1(`Toolkit ${k}: Car dealer negotiation`),
+      p('Dealer finance often carries a higher rate, extra fees and add-ons that are easy to miss in the paperwork. Use these when you talk to the dealer.', { after: 200 }),
+      callout('Rule 1: agree the price before you talk about finance', 'Negotiate the drive-away price first. Discussing price and finance together makes it easy to give back a discount through a higher rate, a bigger balloon or added fees.'),
+      spacer(180),
+      h3('What to say'),
+      bullet([sans('When asked "What monthly repayment are you after?": ', { size: 20, bold: true }), sans('"I\'m only negotiating the drive-away price today. I have finance pre-approved with my bank."', { size: 20, italics: true })]),
+      bullet([sans('When offered dealer finance: ', { size: 20, bold: true }), sans(`"I'll consider it if your comparison rate, in writing, beats my bank's ${fmtPct(state.car.bankRate)}, with no early payout fees or bundled add-ons."`, { size: 20, italics: true })]),
+      bullet([sans('When add-ons appear (paint protection, extended warranty, gap insurance): ', { size: 20, bold: true }), sans('"Please remove the optional add-ons from the drive-away price. I\'ll decide on any of them separately."', { size: 20, italics: true })]),
+      spacer(200),
+      h3('Red flags'),
+      bullet([sans('Large balloon payment: ', { size: 20, bold: true }), sans('keeps repayments low but leaves a big lump sum at the end, often more than the car is worth.', { size: 20 })]),
+      bullet([sans('Headline rate only: ', { size: 20, bold: true }), sans('the comparison rate includes establishment and monthly fees. Compare comparison rates.', { size: 20 })]),
+      bullet([sans('Used car: ', { size: 20, bold: true }), sans('run a PPSR search at ppsr.gov.au (A$2) to check it isn\'t under finance, written off or stolen.', { size: 20 })]),
+    ]);
+  }
+
+  const rateDebt = derived.debtOrder.find(d => !NO_EXTRA_REPAYMENT_TYPES.includes(d.type) && d.rate > 0 && d.balance > 0);
+  if (rateDebt) {
+    const debtName = niceType(rateDebt.type);
+    toolkits.push((k) => [
+      pageBreak(),
+      h1(`Toolkit ${k}: The rate-cut phone call for your ${debtName}`),
+      p(`Your ${debtName} costs ${fmtPct(rateDebt.rate)} on ${fmt(rateDebt.balance)}, about ${fmt(rateDebt.balance * rateDebt.rate / 1200)} in interest this month. Lenders often give better rates to new customers than existing ones, and a short call can be enough to get yours reviewed.`, { after: 200 }),
+      callout('Before you call', `Look up two or three real offers for a ${debtName} (rates or balance-transfer deals) on Finder, Mozo or Canstar. Write down the best one. Have your account number, balance (${fmt(rateDebt.balance)}) and current rate (${fmtPct(rateDebt.rate)}) ready.`),
+      spacer(180),
+      h3('The call, step by step'),
+      bullet([sans('1. Ask for the right team: ', { size: 20, bold: true }), sans('ask for "retentions" or say you are thinking of closing or transferring the account. That team can usually offer more than general support.', { size: 20 })]),
+      bullet([sans('2. Open with the facts: ', { size: 20, bold: true }), sans(`"I'm paying ${fmtPct(rateDebt.rate)} on a ${fmt(rateDebt.balance)} balance and I've always paid on time. [Lender] is offering [the rate you found]."`, { size: 20, italics: true })]),
+      bullet([sans('3. Ask directly: ', { size: 20, bold: true }), sans('"What can you do on the rate to keep my account?"', { size: 20, italics: true })]),
+      bullet([sans('4. If the answer is no: ', { size: 20, bold: true }), sans('"Thanks. I\'ll go ahead with the transfer then. Can you tell me the payout figure?" Then compare the balance-transfer offer properly, including the rate after the promotional period ends.', { size: 20, italics: true })]),
+      bullet([sans('5. Ask about the annual fee: ', { size: 20, bold: true }), sans('"Can you also waive this year\'s annual fee?"', { size: 20, italics: true })]),
+      small('Only quote offers you have actually seen. A balance transfer only helps if you stop adding to the card and clear the balance before the promotional rate ends.'),
+    ]);
+  }
+
+  const first = derived.firstRow || { toBuffer: 0, toDebt: 0, toSave: 0 };
+  toolkits.push((k) => [
     pageBreak(),
-    h1('Bonus Toolkit 1: Car Dealer Negotiation Script & Finance Checklist'),
-    p('Dealer finance managers are heavily incentivised on interest rate markups, loan administration charges, and insurance add-ons that cost the average Australian A$3,000–$8,000 extra over the loan term. Use these battle-tested scripts and checkpoints when you speak with dealership staff.', { after: 200 }),
-    
-    callout('Dealer Rule #1: Separate Purchase Price from Finance', 'Never negotiate the car price and finance simultaneously. Dealerships lower the sticker price while inflating loan terms, balloon percentages, and fees to recoup profit. Always negotiate the drive-away price first.'),
+    h1(`Toolkit ${k}: Automate your payday`),
+    p('Good decisions are easier when they happen automatically. This four-account setup runs your plan on payday with scheduled transfers (PayID / Osko).', { after: 200 }),
+    callout('The rule', 'Don\'t spend from the account your pay lands in. The day after payday, scheduled transfers move every dollar to the account it belongs in.'),
     spacer(180),
-
-    h3('Word-for-Word Dealership Scripts'),
-    bullet([
-      arial('When asked "What monthly repayment are you looking for?": ', { size: 20, bold: true }),
-      arial('"I am only negotiating the total drive-away purchase price today. I already have financing pre-approved with my bank at a competitive comparison rate."', { size: 20, italics: true }),
-    ]),
-    bullet([
-      arial('When offered "convenient on-the-spot dealer finance": ', { size: 20, bold: true }),
-      arial('"I am happy to review your offer, but only if your Australian Comparison Rate in writing beats my bank pre-approval by at least 50 basis points, with zero early payout fees or bundled add-ons."', { size: 20, italics: true }),
-    ]),
-    bullet([
-      arial('When dealer adds "dealer prep", "paint protection", or "gap insurance": ', { size: 20, bold: true }),
-      arial('"Under Australian Consumer Law, statutory consumer guarantees already protect me against major mechanical defects. Please remove the extended warranty, doc fees, and protection pack from the drive-away invoice."', { size: 20, italics: true }),
-    ]),
-    spacer(200),
-
-    h3('Dealership Red-Flag Checklist'),
-    bullet([arial('Balloon / Residual Payment Trap: ', { size: 20, bold: true }), arial('A balloon payment over 20-30% keeps monthly payments artificially low, but leaves you in negative equity when the loan matures.', { size: 20 })]),
-    bullet([arial('Comparison Rate vs Headline Rate: ', { size: 20, bold: true }), arial('Never sign based on headline rate alone. The comparison rate includes upfront establishment fees (often A$400–$900) and monthly service fees.', { size: 20 })]),
-    bullet([arial('PPSR Search: ', { size: 20, bold: true }), arial('For any used vehicle, pay A$2.00 directly at ppsr.gov.au to verify the car is unencumbered and has never been written off or stolen.', { size: 20 })]),
-
-    pageBreak(),
-    h1('Bonus Toolkit 2: The 5-Minute Aussie Bank Rate-Cut Phone Script'),
-    p('The "loyalty tax" in Australian banking is well documented: Big 4 and major non-bank lenders routinely charge existing borrowers 0.50%–2.00% more than new customers. A single 5-minute phone call to your lender’s retention department can save hundreds of dollars in interest this year.', { after: 200 }),
-
-    callout('Preparation Before You Dial', 'Look up current introductory or promotional rates on Finder.com.au or Mozo for your debt type (credit card or personal loan). Have your account number, current balance, and current interest rate ready.'),
-    spacer(180),
-
-    h3('Step-by-Step Retention Phone Script'),
-    bullet([
-      arial('Step 1 — Reach the Retention Team: ', { size: 20, bold: true }),
-      arial('When the automated menu asks your reason for calling, say: "Discharge department" or "Account cancellation". Frontline customer support has minimal discount authority; retention teams have designated budget to retain accounts.', { size: 20 }),
-    ]),
-    bullet([
-      arial('Step 2 — Opening Statement: ', { size: 20, bold: true }),
-      arial('"Hi, my name is [Name]. I have held this account for [X] years and my repayment track record has been spotless. I am currently conducting an annual review of my finances and noticed competitor lenders offering variable rates 1.5% below what I am currently paying on this account."', { size: 20, italics: true }),
-    ]),
-    bullet([
-      arial('Step 3 — The Request: ', { size: 20, bold: true }),
-      arial('"Before I submit a balance-transfer application or refinance this balance to another institution this Friday, what rate reduction can you apply to my account today to keep my business?"', { size: 20, italics: true }),
-    ]),
-    bullet([
-      arial('Step 4 — If they say no or offer a trivial 0.10%: ', { size: 20, bold: true }),
-      arial('"I appreciate your position, but given market rates, I need this escalated to a senior retention manager with concession authority before I make my final decision to transfer the facility."', { size: 20, italics: true }),
-    ]),
-    bullet([
-      arial('Step 5 — Ask for Annual Fee Waiver: ', { size: 20, bold: true }),
-      arial('"In addition to lowering the rate, can you also waive the upcoming annual account maintenance fee as a gesture of goodwill for my loyalty?"', { size: 20, italics: true }),
-    ]),
-
-    pageBreak(),
-    h1('Bonus Toolkit 3: Set-and-Forget Payday Automation Architecture'),
-    p('Willpower is a finite resource; automated account structures make good financial choices default. This 4-account architecture uses standard Australian PayID and Osko scheduled transfers to execute your cashflow plan automatically on payday.', { after: 200 }),
-
-    callout('The Golden Rule of Payday Architecture', 'Never spend directly out of the account your salary lands in. On Day +1 after payday, 100% of your income should be automatically swept into dedicated purpose-driven accounts.'),
-    spacer(180),
-
-    h3('The 4-Account Setup (All Zero-Fee Accounts)'),
+    h3('Your four accounts'),
     table([
-      ['Account Name', 'Purpose', 'Card?', 'Automated Rule'],
-      ['1. Income Hub', 'Receives salary / income', 'NO', 'Auto-sweeps 100% of funds on payday +1 day'],
-      ['2. Fixed Essentials', 'Rent/mortgage, utilities, food, rego', 'NO', 'Direct debits linked here; holds monthly essentials'],
-      ['3. Emergency Buffer / Debt', 'High-interest savings account', 'NO', 'Receives debt avalanche extra or buffer build amount'],
-      ['4. Guilt-Free Splurge', 'Dining, entertainment, discretionary', 'YES', 'Weekly/fortnightly allowance; spend to zero without guilt'],
+      ['Account', 'What it is for', 'Card?', 'Your amount each month'],
+      ['1. Pay arrives', 'Receives your take-home pay', 'No', `${fmt(state.income)} in, all moved out the next day`],
+      ['2. Bills', 'Rent or mortgage, utilities, food, rego, debt minimums', 'No', fmt(state.expenses + derived.debtMins)],
+      ['3. Buffer / debt', 'High-interest savings, plus your extra debt payment', 'No', first.toBuffer || first.toDebt ? `${fmt(first.toBuffer + first.toDebt)} this month (${(first.focus || []).join(' → ') || 'per your plan'})` : '—'],
+      ['4. Spending', 'Everything else', 'Yes', 'Whatever is left after the above'],
     ]),
     spacer(200),
+    h3('Setting it up'),
+    bullet([sans('Low-fee banks: ', { size: 20, bold: true }), sans('many Australian banks offer fee-free accounts with instant PayID/Osko transfers. Compare on Canstar or Finder.', { size: 20 })]),
+    bullet([sans('Timing: ', { size: 20, bold: true }), sans('schedule transfers for the business day after payday, so a late pay run doesn\'t cause an overdraw.', { size: 20 })]),
+    bullet([sans('No cards on accounts 2 and 3: ', { size: 20, bold: true }), sans('keeping them off Apple Pay and Google Wallet stops impulse spending from them.', { size: 20 })]),
+  ]);
 
-    h3('Implementation Checklist'),
-    bullet([arial('Choose low-fee/zero-fee institutions: ', { size: 20, bold: true }), arial('Use Macquarie, ING, UBank, or Up Bank which offer zero monthly fees and instant Osko PayID transfers.', { size: 20 })]),
-    bullet([arial('Time the transfers: ', { size: 20, bold: true }), arial('Schedule your automated sweep transfers for 1 business day AFTER your usual pay day to prevent overdrafts from payroll delays.', { size: 20 })]),
-    bullet([arial('Keep cards off wealth accounts: ', { size: 20, bold: true }), arial('Never connect Apple Pay, Google Wallet, or physical cards to Account 2 (Essentials) or Account 3 (Buffer/Debt). Friction prevents impulsive leakage.', { size: 20 })]),
-  ];
-}
-
-// ─── Derive ──────────────────────────────────────────────────────────────────
-function deriveReportData(state) {
-  const debts = state.debts || [];
-  const debtMins = debts.reduce((s, d) => s + (d.min || 0), 0);
-  const surplus = state.income - state.expenses - debtMins;
-
-  const monthlyEssentials = state.expenses;
-  const bufferMonths = state.savings / Math.max(monthlyEssentials, 1);
-  const bufferTarget = monthlyEssentials * RULES.TARGET_BUFFER_MONTHS;
-  const bufferShortfall = Math.max(0, bufferTarget - state.savings);
-
-  let toBuffer, toDebt, toCar;
-  if (bufferMonths < RULES.TARGET_BUFFER_MONTHS) {
-    toBuffer = Math.max(0, surplus * 0.4);
-    toDebt = Math.max(0, surplus * 0.4);
-    toCar = Math.max(0, surplus * 0.2);
-  } else {
-    toBuffer = 0;
-    toDebt = debts.length ? Math.max(0, surplus * 0.6) : 0;
-    toCar = Math.max(0, surplus * (debts.length ? 0.4 : 1.0));
-  }
-
-  // Use proper amortisation for months-to-clear.
-  const order = buildDebtPayoffOrder(debts).map(d => {
-    const monthlyForThis = (d.min || 0) + toDebt; // simplifying: extra applied to top debt
-    const m = monthsToClear(d.balance, d.rate, monthlyForThis);
-    const interest = totalInterestPaid(d.balance, d.rate, monthlyForThis);
-    return { ...d, monthsToClear: m, totalInterest: interest };
-  });
-
-  const totalInterestAvalanche = order.reduce((s, d) => s + (d.totalInterest || 0), 0);
-  // Naive equal-split estimate (proxy: same monthly extra split N ways).
-  const totalInterestEqual = debts.reduce((s, d) => {
-    const mp = (d.min || 0) + toDebt / Math.max(debts.length, 1);
-    return s + totalInterestPaid(d.balance, d.rate, mp);
-  }, 0);
-  const avalancheSaving = Math.max(0, totalInterestEqual - totalInterestAvalanche);
-
-  // Cost-of-doing-nothing: minimums-only baseline vs avalanche, on highest-rate debt.
-  const baselineInterest = debts.reduce((s, d) => s + totalInterestPaid(d.balance, d.rate, d.min || 1), 0);
-  const costOfDoingNothing = Math.max(0, baselineInterest - totalInterestAvalanche);
-  const costOfDoingNothingPerWeek = fmt(costOfDoingNothing / (5 * 52));
-
-  let topMove;
-  if (bufferMonths < RULES.MIN_BUFFER_MONTHS) {
-    topMove = {
-      title: 'Build a 1-month emergency buffer first',
-      shortBody: `Aim for ${fmt(monthlyEssentials)} (1 month of essentials) before any debt acceleration or car purchase. This is the single highest-leverage move you can make.`,
-    };
-  } else if (order[0]) {
-    const top = order[0];
-    topMove = {
-      title: `Attack the ${NICE_TYPE[top.type] || top.type} (${fmtPct(top.rate)})`,
-      shortBody: `It is your highest-rate debt and every extra dollar you put on it returns ${fmtPct(top.rate)} risk-free. Pay an extra ${fmt(toDebt)}/month on top of the minimum.`,
-    };
-  } else if (bufferMonths >= RULES.IDEAL_BUFFER_MONTHS) {
-    topMove = {
-      title: 'Start a regular investment plan',
-      shortBody: `Buffer is healthy and there is no high-rate debt. Set up an automatic ${fmt(surplus * 0.6)}/month into a low-fee diversified ETF or salary-sacrificed super (in priority order).`,
-    };
-  } else if (bufferMonths >= RULES.TARGET_BUFFER_MONTHS) {
-    // Buffer is 3–6 months (healthy but not ideal). toBuffer is 0 in Phase B,
-    // so we must compute the push-to-ideal amount directly from surplus.
-    const idealTarget = monthlyEssentials * RULES.IDEAL_BUFFER_MONTHS;
-    const remaining = idealTarget - state.savings;
-    const monthsToIdeal = Math.max(1, Math.ceil(remaining / Math.max(surplus, 1)));
-    const toIdealBuffer = Math.min(surplus, Math.round(remaining / Math.min(monthsToIdeal, 12)));
-    topMove = {
-      title: 'Push your buffer to the 6-month ideal',
-      shortBody: `Your buffer is at ${bufferMonths.toFixed(1)} months — healthy, but not fully padded. The 6-month target is ${fmt(idealTarget)}. Direct ${fmt(toIdealBuffer)}/month into a high-interest savings account and you will get there in ~${monthsToIdeal} months.`,
-    };
-  } else {
-    topMove = {
-      title: 'Top your buffer up to 3 months',
-      shortBody: `${fmt(bufferTarget)} is the next milestone. Direct ${fmt(toBuffer)}/month into a separate high-interest savings account.`,
-    };
-  }
-
-  const waitItem = state.car.considering === 'yes' && bufferMonths < RULES.TARGET_BUFFER_MONTHS
-    ? `Wait on the car. With buffer at ${bufferMonths.toFixed(1)} months and high-rate debt outstanding, a new financed depreciating asset compounds risk. Section 4 shows the exact dollar difference between buying now and waiting 6-12 months.`
-    : `Avoid taking on any new consumer debt (BNPL, store cards, additional car loans) until existing debts are below ${fmtPct(RULES.HIGH_RATE_THRESHOLD)} and your buffer is at ${RULES.TARGET_BUFFER_MONTHS} months.`;
-
-  return {
-    surplus,
-    bufferMonths,
-    bufferTarget,
-    bufferShortfall,
-    monthlyAllocation: { toBuffer, toDebt, toCar },
-    debtOrder: order,
-    topMove,
-    waitItem,
-    costOfDoingNothing,
-    costOfDoingNothingPerWeek,
-    avalancheSaving,
-  };
+  return toolkits.flatMap((build, i) => build(i + 1));
 }
 
 // ─── Build doc ───────────────────────────────────────────────────────────────
 function buildReport(state, opts = {}) {
   const derived = deriveReportData(state);
   const includeBonuses = opts.includeBonuses !== false;
+
+  // Sections are numbered in the order they appear; car sections only exist when a car is planned.
+  const builders = [
+    buildPlanLogic,
+    build12MonthMap,
+    buildDebtRoadmap,
+    ...(derived.hasCar ? [buildCarScenarios, buildOwnershipCost] : []),
+    buildStressTest,
+    buildActionChecklist,
+  ];
   const children = [
     ...buildCover(state, derived),
-    ...build12MonthMap(state, derived),
-    ...buildDebtRoadmap(state, derived),
-    ...buildCarScenarios(state, derived),
-    ...buildOwnershipCost(state, derived),
-    ...buildStressTest(state, derived),
-    ...buildActionChecklist(state, derived),
+    ...builders.flatMap((build, i) => build(state, derived, i + 1)),
     ...(includeBonuses ? buildBonusToolkits(state, derived) : []),
   ];
 
   return new Document({
     creator: 'MoneyMoves AU',
-    title: 'MoneyMoves AU — Personalised Decision Pack',
-    description: 'Personalised debt + car loan decision pack for an Australian household.',
+    title: `MoneyMoves AU — ${REPORT_NAME}`,
+    description: 'Personalised money plan for an Australian household.',
     styles: {
       default: { document: { run: { font: 'Arial', size: 22 } } },
       paragraphStyles: [
@@ -822,21 +949,26 @@ function buildReport(state, opts = {}) {
       ],
     },
     numbering: {
-      config: [{
-        reference: 'bullets',
-        levels: [{
-          level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 720, hanging: 360 } } },
-        }],
-      }],
+      config: [
+        {
+          reference: 'bullets',
+          levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT,
+            style: { paragraph: { indent: { left: 720, hanging: 360 } } } }],
+        },
+        {
+          reference: 'steps',
+          levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT,
+            style: { paragraph: { indent: { left: 720, hanging: 360 } } } }],
+        },
+      ],
     },
     sections: [{
-      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1200, right: 1200, bottom: 1200, left: 1200 } } },
       headers: {
         default: new Header({
           children: [new Paragraph({
             alignment: AlignmentType.RIGHT,
-            children: [arial('MoneyMoves AU — Personalised Decision Pack', { size: 18, color: COLOR_INK_SOFT })],
+            children: [sans(`MoneyMoves AU — ${REPORT_NAME}`, { size: 16, color: COLOR_INK_SOFT })],
           })],
         }),
       },
@@ -845,7 +977,7 @@ function buildReport(state, opts = {}) {
           children: [new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              arial('Confidential. General information only — not personal financial advice.', { size: 16, color: COLOR_INK_SOFT }),
+              sans('General information only — not personal financial advice.', { size: 16, color: COLOR_INK_SOFT }),
               new TextRun({ children: ['  |  Page ', PageNumber.CURRENT, ' of ', PageNumber.TOTAL_PAGES], size: 16, color: COLOR_INK_SOFT, font: 'Arial' }),
             ],
           })],
@@ -861,7 +993,7 @@ async function generateReport(state, opts = {}) {
   return Packer.toBuffer(doc);
 }
 
-module.exports = { buildReport, generateReport };
+module.exports = { buildReport, generateReport, deriveReportData, simulatePlan };
 
 if (require.main === module) {
   (async () => {
