@@ -406,41 +406,90 @@
     border-left: 3px solid var(--color-accent);
   }
 
-  /* ─── Aussie Sticker Strip ─── */
-  .sticker-strip {
-    margin: var(--space-8) 0 var(--space-3); text-align: center;
+  /* ─── Move-card stickers ───
+     Every sticker sits in the same fixed column, centred down the card, so they line up
+     across cards. The sticker pops in once; after that only parts of the artwork move
+     (see STICKER_PARTS in the script). */
+  .move {
+    display: grid; grid-template-columns: 32px minmax(0, 1fr) 168px;
+    column-gap: var(--space-4); align-items: start;
   }
-  .sticker-strip h4 {
-    font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 1.5px;
-    color: var(--color-text-muted); margin-bottom: var(--space-4); font-weight: 600;
+  .move-num { margin-top: -2px; }   /* number lines up with the title's first line */
+  .move-sticker {
+    align-self: center;
+    display: flex; align-items: center; justify-content: center;
+    width: 168px; height: 168px;
   }
-  .sticker-grid {
-    display: flex; justify-content: center; gap: var(--space-5); flex-wrap: wrap;
+  .sticker-stage {
+    position: relative; width: 152px; height: 152px;
+    filter: drop-shadow(0 6px 10px rgba(13,27,30,.14));
+    animation: stickerPop .5s cubic-bezier(.34,1.56,.64,1) both;
+    animation-delay: calc(var(--i, 0) * 150ms);
   }
-  .sticker-card {
-    width: 140px; text-align: center; transition: transform .3s ease;
-    cursor: default;
+  .sticker-stage img {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain;
   }
-  .sticker-card:hover {
-    transform: scale(1.12) rotate(-3deg);
-  }
-  .sticker-card:nth-child(2):hover { transform: scale(1.12) rotate(3deg); }
-  .sticker-card:nth-child(3):hover { transform: scale(1.12) rotate(-2deg); }
-  .sticker-card img {
-    width: 120px; height: 120px; object-fit: contain;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,.12));
-    animation: stickerPop .4s ease backwards;
-  }
-  .sticker-card:nth-child(1) img { animation-delay: .1s; }
-  .sticker-card:nth-child(2) img { animation-delay: .25s; }
-  .sticker-card:nth-child(3) img { animation-delay: .4s; }
   @keyframes stickerPop {
-    from { opacity: 0; transform: scale(.3) rotate(-15deg); }
-    to   { opacity: 1; transform: scale(1) rotate(0); }
+    from { opacity: 0; scale: .4; }
+    to   { opacity: 1; scale: 1; }
   }
-  .sticker-card .sticker-label {
-    margin-top: var(--space-2); font-size: var(--text-xs); font-weight: 700;
-    color: var(--color-text); letter-spacing: .5px; line-height: 1.3;
+
+  /* Part movements — small and looping, so they read as the character moving */
+  .anim-zzz-rise    { animation: zzzRise 3s ease-in infinite; }
+  .anim-shout       { animation: shout 1.8s ease-in-out infinite; }
+  .anim-wobble      { animation: wobble 2.2s ease-in-out infinite; }
+  .anim-flutter     { animation: flutter 2.6s ease-in-out infinite; }
+  .anim-puff        { animation: puff .9s ease-in-out infinite; }
+  .anim-run-bounce  { animation: runBounce .45s ease-in-out infinite alternate; }
+  .anim-judder      { animation: judder .5s linear infinite; }
+  .anim-flex        { animation: flex 1.6s ease-in-out infinite alternate; }
+  .anim-swing       { animation: swing 2s ease-in-out infinite alternate; }
+  .anim-bob         { animation: bob 1.8s ease-in-out infinite; }
+  .anim-bubble      { animation: bubble 2.6s ease-in infinite; }
+  .anim-bubble-late { animation: bubble 2.6s ease-in 1.3s infinite; }
+  .anim-nod         { animation: nod 2.4s ease-in-out infinite; }
+  .anim-tap         { animation: tap .9s ease-in-out infinite; }
+
+  @keyframes zzzRise {
+    0%   { translate: 0 0;     opacity: 1; }
+    70%  { translate: 6px -12px; opacity: 0; }
+    71%  { translate: 0 4px;   opacity: 0; }
+    100% { translate: 0 0;     opacity: 1; }
+  }
+  @keyframes shout {
+    0%, 45%, 100% { rotate: 0deg; }
+    55% { rotate: -6deg; } 65% { rotate: 5deg; } 75% { rotate: -4deg; } 85% { rotate: 3deg; }
+  }
+  @keyframes wobble    { 0%, 100% { rotate: -3deg; } 50% { rotate: 3deg; } }
+  @keyframes flutter   { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -3deg; } }
+  @keyframes puff      { 0%, 100% { scale: 1; } 50% { scale: 1.05; } }
+  @keyframes runBounce { from { translate: 0 0; } to { translate: 0 -4px; } }
+  @keyframes judder {
+    0%, 100% { translate: 0 0; rotate: 0deg; }
+    25% { translate: -1px 1px; rotate: -2deg; }
+    50% { translate: 1px -1px; rotate: 1deg; }
+    75% { translate: -1px 0; rotate: 2deg; }
+  }
+  @keyframes flex      { from { rotate: 0deg; } to { rotate: -5deg; } }
+  @keyframes swing     { from { rotate: -3deg; } to { rotate: 3deg; } }
+  @keyframes bob       { 0%, 100% { translate: 0 0; rotate: -4deg; } 50% { translate: 0 -5px; rotate: 4deg; } }
+  @keyframes bubble {
+    0%   { translate: 0 0;    opacity: 1; }
+    75%  { translate: 0 -10px; opacity: 0; }
+    76%  { translate: 0 3px;  opacity: 0; }
+    100% { translate: 0 0;    opacity: 1; }
+  }
+  @keyframes nod       { 0%, 100% { rotate: 0deg; } 50% { rotate: 3deg; } }
+  @keyframes tap       { 0%, 60%, 100% { rotate: 0deg; } 30% { rotate: -12deg; } }
+
+  @media (max-width: 640px) {
+    /* Sticker goes on top, centred, so the text keeps the full card width */
+    .move { grid-template-columns: 32px minmax(0, 1fr); row-gap: var(--space-2); }
+    .move-sticker { grid-column: 1 / -1; grid-row: 1; justify-self: center; width: 136px; height: 136px; }
+    .sticker-stage { width: 128px; height: 128px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sticker-stage, .sticker-part { animation: none !important; }
   }
 
   /* ── Auth overlay ── */
@@ -1213,6 +1262,63 @@ function generatePlan() {
   showStep(5);
 }
 
+/* ───── Sticker part animation ─────
+   Each moving part is a copy of the sticker clipped to one region (inset: top right bottom left,
+   as % of the 480px artwork) and animated on top of the still image. `detached` parts are
+   separate floating bits (zzz, question marks, bubbles): the still image gets a transparent hole
+   there, so the part can drift away and fade without leaving a copy behind. Their regions must
+   not overlap the character. Other parts move only slightly over the original, so no hole is needed. */
+const STICKER_PARTS = {
+  koala: [
+    { clip: 'inset(3% 11% 81% 64%)',  origin: '78% 12%', anim: 'zzz-rise',     detached: true },
+  ],
+  cockatoo: [
+    { clip: 'inset(21% 12% 57% 53%)', origin: '60% 40%', anim: 'shout' },
+    { clip: 'inset(6% 37% 72% 35%)',  origin: '50% 28%', anim: 'wobble' },
+    { clip: 'inset(23% 69% 41% 11%)', origin: '20% 40%', anim: 'flutter' },
+  ],
+  emu: [
+    { clip: 'inset(53% 10% 24% 31%)', origin: '90% 70%', anim: 'puff' },
+    // stepped outline: goes around the credit card's left arm so the two parts don't overlap
+    { clip: 'polygon(8% 9%, 44% 9%, 44% 38%, 63% 38%, 63% 74%, 8% 74%)', origin: '35% 70%', anim: 'run-bounce' },
+    { clip: 'inset(12% 7% 45% 46%)',  origin: '75% 35%', anim: 'judder' },
+  ],
+  kangaroo: [
+    { clip: 'inset(23% 69% 58% 18%)', origin: '20% 42%', anim: 'flex' },   // forearm + fist only
+    { clip: 'inset(24% 10% 20% 57%)', origin: '80% 27%', anim: 'swing' },
+  ],
+  platypus: [
+    { clip: 'inset(4% 35% 81% 38%)',  origin: '50% 12%', anim: 'bob',          detached: true },
+    { clip: 'inset(15% 61% 72% 28%)', origin: '33% 21%', anim: 'bubble',       detached: true },
+    { clip: 'inset(11% 25% 79% 62%)', origin: '68% 17%', anim: 'bubble-late',  detached: true },
+  ],
+  wombat: [
+    { clip: 'inset(6% 27% 63% 44%)',  origin: '58% 35%', anim: 'nod' },
+    { clip: 'inset(34% 48% 51% 35%)', origin: '47% 41%', anim: 'tap' },
+  ],
+};
+function stickerName(src) { return src.split('/').pop().replace('.png', ''); }
+
+// Mask for the still image: fully visible except holes where detached parts sit.
+function stickerBaseMask(src) {
+  const holes = (STICKER_PARTS[stickerName(src)] || []).filter(p => p.detached).map(p => {
+    const [t, r, b, l] = p.clip.match(/[\d.]+/g).map(Number);
+    const w = 100 - l - r, h = 100 - t - b;
+    // mask-position % is measured against (box − layer size), not the box: convert the offsets
+    const x = (l / (100 - w)) * 100, y = (t / (100 - h)) * 100;
+    return `linear-gradient(black, black) ${x.toFixed(2)}% ${y.toFixed(2)}% / ${w}% ${h}% no-repeat`;
+  });
+  if (!holes.length) return '';
+  const layers = ['linear-gradient(black, black)', ...holes].join(', ');
+  return `-webkit-mask:${layers};-webkit-mask-composite:xor;mask:${layers};mask-composite:exclude;`;
+}
+
+function stickerParts(src) {
+  return (STICKER_PARTS[stickerName(src)] || []).map(p =>
+    `<img class="sticker-part anim-${p.anim}" src="${src}" alt="" aria-hidden="true" style="clip-path:${p.clip};transform-origin:${p.origin};">`
+  ).join('');
+}
+
 function niceType(t) {
   return ({
     credit_card: 'credit card', personal_loan: 'personal loan',
@@ -1312,34 +1418,35 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   moves.forEach((m, i) => {
     const cls = i === 0 ? 'priority-1' : i === 1 ? 'priority-2' : 'priority-3';
     const t = m.title.toLowerCase();
-    let sticker = { src: 'stickers/kangaroo.png', label: 'MONEY MOVES 💪' };
+    // Each sticker has its caption drawn into the artwork; the label is its alt text.
+    let sticker = { src: 'stickers/kangaroo.png', label: 'Money moves' };
     // ATO must be checked before generic 'clear' to avoid wrong match
     if      (t.includes('ato') || t.includes('spending more') || t.includes('no real surplus'))
-                                                                   sticker = { src: 'stickers/cockatoo.png', label: 'PAY YOUR BILLS MATE!! 📢' };
-    else if (t.includes('buffer') || t.includes('emergency'))      sticker = { src: 'stickers/wombat.png',   label: 'BUILDING THAT BUFFER 🧱' };
+                                                                   sticker = { src: 'stickers/cockatoo.png', label: 'Pay your bills, mate!' };
+    else if (t.includes('buffer') || t.includes('emergency'))      sticker = { src: 'stickers/wombat.png',   label: 'Building that buffer' };
     else if (t.includes('attack') || t.includes('clear') || t.includes('repayment'))
-                                                                   sticker = { src: 'stickers/emu.png',       label: 'DEBT FREE OR BUST 🏃' };
+                                                                   sticker = { src: 'stickers/emu.png',       label: 'Debt free or bust' };
     else if (t.includes('car') || t.includes('dealer') || t.includes('bank loan') || t.includes('bank/credit') || t.includes('waiting'))
-                                                                   sticker = { src: 'stickers/platypus.png',  label: 'NAH MATE, USE THE BANK 🧮' };
+                                                                   sticker = { src: 'stickers/platypus.png',  label: 'Dealer finance? Nah, mate' };
     else if (t.includes('hecs') || t.includes('invest') || t.includes('great shape'))
-                                                                   sticker = { src: 'stickers/koala.png',     label: 'SAVINGS ON AUTOPILOT 😴' };
-    else if (surplus < 100)                                        sticker = { src: 'stickers/cockatoo.png',  label: 'PAY YOUR BILLS MATE!! 📢' };
+                                                                   sticker = { src: 'stickers/koala.png',     label: 'Savings on autopilot' };
+    else if (surplus < 100)                                        sticker = { src: 'stickers/cockatoo.png',  label: 'Pay your bills, mate!' };
     html += `
-      <div class="move">
+      <div class="move" style="--i:${i};">
         <div class="move-num ${cls}">${i + 1}</div>
-        <div style="flex:1">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-            <h4>${m.title}</h4>
-            <div style="text-align:center;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
-              <img src="${sticker.src}" alt="${sticker.label}" style="width:88px;height:88px;object-fit:contain;display:block;" loading="lazy">
-              <div style="font-size:10px;font-weight:800;color:var(--color-text);letter-spacing:0.05em;background:var(--color-accent-soft);border-radius:var(--radius-full);padding:3px 10px;white-space:nowrap;">${sticker.label}</div>
-            </div>
-          </div>
+        <div class="move-body">
+          <h4>${m.title}</h4>
           <p>${m.body}</p>
           <details>
             <summary>Why this rank</summary>
             <div class="why">${m.why}</div>
           </details>
+        </div>
+        <div class="move-sticker">
+          <div class="sticker-stage">
+            <img src="${sticker.src}" alt="${sticker.label}" width="152" height="152" loading="lazy" style="${stickerBaseMask(sticker.src)}">
+            ${stickerParts(sticker.src)}
+          </div>
         </div>
       </div>
     `;
@@ -1963,6 +2070,8 @@ function signOutApp() { Clerk.signOut(); }
       overlay.style.display = 'none';
       // The signed-in address is where the plan/PDF goes unless the user types another one.
       if (!state.email && user.primaryEmailAddress?.emailAddress) state.email = user.primaryEmailAddress.emailAddress;
+      // Used on the PDF cover ("Prepared for …") instead of the email address.
+      if (user.fullName) state.name = user.fullName.slice(0, 80);
       const name = user.fullName || user.primaryEmailAddress?.emailAddress || '';
       navUser.innerHTML = `<span>${name}</span><button class="nav-signout" onclick="signOutApp()">Sign out</button>`;
     } else {
