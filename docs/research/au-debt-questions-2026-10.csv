@@ -1,0 +1,101 @@
+Topic,Question,App answers it?,Note
+Which debt first,what debt to pay off first,Yes,Core ranking
+Which debt first,which debt should i pay off first,Yes,Core ranking
+Which debt first,which debt to pay off first calculator,Yes,
+Which debt first,what debt is best to pay off first,Yes,
+Which debt first,how to decide which debt to pay off first,Yes,Why-this-rank explains
+Which debt first,how to prioritize which debt to pay off first,Yes,
+Which debt first,which credit card debt to pay off first,Yes,Highest rate first
+Which debt first,which debt to pay off first reddit,Yes,
+Which debt first,what debt to pay off first when buying a house,Partly,No home-deposit goal modelling
+Which debt first,what debt to pay off first to improve credit score,No,No credit-score logic
+Which debt first,what bills to pay off first,Partly,"Debts only, not bills"
+Methods,debt avalanche method,Yes,Plan uses avalanche
+Methods,debt avalanche calculator,Yes,
+Methods,debt snowball vs avalanche,Partly,"Comparison computed internally, not shown"
+Methods,debt snowball method,No,Snowball not offered
+Methods,debt snowball calculator,No,Snowball not offered
+Methods,debt payoff methods,Partly,Avalanche only
+Tools,debt payoff calculator,Yes,
+Tools,debt payoff planner,Yes,
+Tools,debt payoff apps,Yes,
+Tools,debt payoff tracker,Partly,"Plan, no saved progress"
+Tools,debt payoff spreadsheet,No,No CSV/Excel export
+Tools,debt snowball spreadsheet for google sheets,No,No Sheets export
+Pay off fast,how to pay off debt quickly,Yes,
+Pay off fast,how to pay off debt faster,Yes,
+Pay off fast,what is the fastest way to pay off debt,Yes,
+Pay off fast,how to pay off debt calculator,Yes,
+Pay off fast,how to pay off debt fast calculator,Yes,
+Pay off fast,what is the fastest way to pay off multiple credit cards,Yes,Avalanche across cards
+Pay off fast,how to get out of debt quickly,Yes,
+Pay off fast,how to become debt free quickly,Yes,
+Pay off fast,how to become debt free,Yes,
+Pay off fast,how to become debt free in a year,Partly,No target-date mode
+Pay off fast,how to become debt free in 5 years,Partly,No target-date mode
+Low income,how to pay off debt with low income,Partly,Shortfall path is thin
+Low income,how to pay off debt fast with low income,Partly,
+Low income,how to pay off debt with no money,Partly,Cut costs + National Debt Helpline
+Low income,how to get out of debt when you are broke,Partly,
+Low income,how to get out of debt on a low income,Partly,
+Low income,how to become debt free on a low income,Partly,
+Credit card,how to pay off credit card debt,Yes,
+Credit card,how to pay off credit card debt fast,Yes,
+Credit card,how to pay off credit card quickly,Yes,
+Credit card,what is the fastest way to pay off a credit card,Yes,
+Credit card,how much to pay off credit card,Yes,Payoff date per amount
+Credit card,how to get rid of credit card debt,Yes,
+Credit card,how to get rid of credit card debt fast,Yes,
+Credit card,why is it so hard to pay off credit cards,Partly,Minimums-only cost shown in PDF
+Credit card,why is it hard to pay off credit card debt,Partly,
+Credit card,when should i pay off my credit card,Partly,No statement-timing advice
+Credit card,how to get rid of credit card debt without paying,No,Out of scope
+Credit card,how to get rid of credit card debt without hurting your credit,No,No credit-score logic
+Budget & saving,how to budget to pay off debt,Yes,Surplus maths
+Budget & saving,how to make a budget plan to pay off debt,Yes,
+Budget & saving,how to budget while paying off debt,Yes,
+Budget & saving,how to budget to save money and pay off debt,Yes,
+Budget & saving,is it better to pay off debt or save,Yes,Buffer-first rule
+Budget & saving,save or pay off debt first,Yes,
+Budget & saving,why is it so hard to pay off debt,Partly,
+Emergency fund,how much emergency fund should i have,Yes,1 and 3 month targets
+Emergency fund,how much emergency fund is enough,Yes,
+Emergency fund,how much emergency fund do you need,Yes,
+HECS,should i pay off my hecs debt,Yes,
+HECS,should i pay off hecs early,Yes,
+HECS,is it better to pay off hecs debt early,Yes,
+HECS,should i pay off hecs or invest,Yes,
+HECS,when should i pay off my hecs debt,Yes,
+HECS,should i pay off my hecs debt before buying a house,Partly,No borrowing-power modelling
+HECS,should i pay off my hecs before indexation,Partly,"Explains indexation, not timing"
+HECS,how to pay off hecs debt,Partly,Explains via tax
+HECS,can i pay off my hecs debt early,Partly,
+HECS,how long to pay off hecs debt,No,Needs income-based repayment calc
+ATO / tax debt,how to pay off ato debt,Yes,Ranked as priority
+ATO / tax debt,how long to pay off ato debt,Yes,Payoff date
+ATO / tax debt,how to pay off tax debt australia,Partly,
+ATO / tax debt,can i pay off my tax debt in installments,Partly,Links ATO payment plans
+Car loan,should i pay off my car loan early,Yes,
+Car loan,is it better to pay off car loan early,Yes,
+Car loan,what is the fastest way to pay off a car loan,Yes,
+Car loan,should i pay off my car loan or invest the money,Yes,
+Car loan,should i pay off my car loan early calculator,Yes,
+Car loan,when should i pay off my car loan,Yes,
+Car loan,should i pay off my car loan before buying a house,Partly,
+Car loan,should i pay off my car loan before applying for a mortgage,Partly,
+Loans & BNPL,is it better to pay off a loan early,Yes,
+Loans & BNPL,what is the fastest way to pay off a loan,Yes,
+Loans & BNPL,how long to pay off loan calculator australia,Yes,
+Loans & BNPL,can i pay off a personal loan early,Partly,Mentions break costs
+Loans & BNPL,can i pay off afterpay early,No,No BNPL specifics
+Mortgage,is it better to pay off mortgage or keep money in offset,Partly,Mentions offset only
+Mortgage,should i pay off my mortgage or invest australia,No,Home loans not modelled
+Mortgage,how to pay off your mortgage faster,No,
+Mortgage,how to pay off mortgage in 10 years,No,
+Mortgage,what is the fastest way to pay off a 30 year mortgage,No,
+Mortgage,should i pay off mortgage or add to super,No,
+Consolidation,is debt consolidation a good idea,No,
+Consolidation,is debt consolidation worth it,No,
+Consolidation,debt consolidation australia,No,
+Consolidation,is a balance transfer a good idea,Partly,Toolkit tip only
+Consolidation,is a balance transfer worth it,Partly,Toolkit tip only
