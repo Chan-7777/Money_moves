@@ -303,44 +303,43 @@
   <div class="container">
     <div class="section-head">
       <h2>The free tool stays free. Upgrade when you're ready.</h2>
-      <p class="lede">The web app is completely free. When you want an institutional-grade, personalised action plan to keep, share with your partner, or negotiate with lenders, choose your blueprint:</p>
+      <p class="lede">The web app is completely free. If you want your plan as a PDF to keep, share with your partner or take to your lender, there are two one-off options. No subscription.</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:var(--space-6);align-items:stretch;">
 
-      <!-- Hero Package: Active Co-Pilot (A$49/mo) -->
-      <div style="background:linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-surface) 100%);border:2px solid var(--color-accent);border-radius:var(--radius-xl);padding:var(--space-8);position:relative;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--shadow-md);">
-        <div style="position:absolute;top:-12px;right:var(--space-6);background:var(--color-accent);color:var(--color-surface);font-size:var(--text-xs);font-weight:var(--weight-extrabold);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:0.06em;">Recommended · Save A$100 Today</div>
+      <!-- One-off: Money Plan PDF (price from lib/validators.js TIERS.plan; test/pricing.test.js keeps them equal) -->
+      <div style="background:linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-surface) 100%);border:2px solid var(--color-accent);border-radius:var(--radius-xl);padding:var(--space-8);display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--shadow-md);">
         <div>
-          <div style="display:inline-block;padding:var(--space-1) var(--space-3);background:var(--color-accent);color:var(--color-surface);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:var(--space-2);">Active Co-Pilot</div>
-          <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">Full Strategy + Ongoing Defense</h3>
-          <p style="color:var(--color-text-muted);margin-bottom:var(--space-4);font-size:var(--text-sm);">You don't need the expensive A$149 audit. Get full immediate access for A$49 today with cancel-anytime monthly defense.</p>
-          <div style="font-size:var(--text-display);font-weight:800;color:var(--color-text);margin-bottom:var(--space-1);">A$49 <span style="font-size:var(--text-base);font-weight:var(--weight-normal);color:var(--color-text-muted);">/ month</span></div>
-          <div style="font-size:var(--text-xs);color:var(--color-accent-dark);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">Cancel anytime with 1 click · Zero lock-in</div>
+          <div style="display:inline-block;padding:var(--space-1) var(--space-3);background:var(--color-accent);color:var(--color-surface);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:var(--space-2);">Money Plan PDF</div>
+          <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">Your plan, as a PDF to keep</h3>
+          <p style="color:var(--color-text-muted);margin-bottom:var(--space-4);font-size:var(--text-sm);">Built from the numbers you enter in the free tool.</p>
+          <div style="font-size:var(--text-display);font-weight:800;color:var(--color-text);margin-bottom:var(--space-1);"><span data-tier-price="plan">A$49</span> <span style="font-size:var(--text-base);font-weight:var(--weight-normal);color:var(--color-text-muted);">one-off</span></div>
+          <div style="font-size:var(--text-xs);color:var(--color-accent-dark);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">One payment · No subscription</div>
           <ul class="check-list" style="font-size:var(--text-sm);margin-bottom:var(--space-6);">
-            <li><strong>Instant 7-Section Dossier & 12-Month Roadmap:</strong> Custom payoff acceleration schedule</li>
-            <li><strong>Day 1 Cash Retrieval Mission:</strong> Word-for-word retention script that recovers your $49 in 15 minutes</li>
-            <li><strong>All 3 Negotiation Toolkits:</strong> Car dealer script (A$49 value) + Bank rate cheatsheet (A$39 value) + Payday automation (A$29 value)</li>
-            <li><strong>Ongoing Monthly Rate Defense:</strong> Monthly check-ins & rate cut alerts whenever RBA shifts</li>
-            <li><strong>🛡️ 30-Day 100x Guarantee:</strong> Uncovers at least A$1,400 in savings or prompt 100% refund</li>
+            <li><strong>How your plan works:</strong> where each dollar of your surplus goes, and why</li>
+            <li><strong>12-month cash map:</strong> buffer, debt and savings, month by month</li>
+            <li><strong>Debt payoff order:</strong> the month each debt is cleared</li>
+            <li><strong>Stress test:</strong> what happens if your income stops for 3 months</li>
+            <li><strong>Dated action checklist</strong></li>
+            <li><strong>Car scenarios and 5-year running costs</strong>, if you're planning a car</li>
           </ul>
         </div>
         <a href="app.html" class="price-cta" style="background:var(--color-accent);color:var(--color-surface);text-align:center;">Start with your free plan →</a>
       </div>
 
-      <!-- Anchor: One-Off Full Strategy Dossier & Audit (A$149) -->
+      <!-- One-off: Money Plan PDF + toolkits (price from lib/validators.js TIERS.complete) -->
       <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-8);display:flex;flex-direction:column;justify-content:space-between;">
         <div>
-          <div style="display:inline-block;padding:var(--space-1) var(--space-3);background:var(--color-bg);color:var(--color-text-muted);border:1px solid var(--color-border);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:var(--space-2);">One-Off Audit</div>
-          <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">One-Time Strategic Dossier</h3>
-          <p style="color:var(--color-text-muted);margin-bottom:var(--space-4);font-size:var(--text-sm);">For Australians who want a single static audit without ongoing monthly co-pilot coaching.</p>
-          <div style="font-size:var(--text-display);font-weight:800;color:var(--color-text);margin-bottom:var(--space-1);">A$149 <span style="font-size:var(--text-base);font-weight:var(--weight-normal);color:var(--color-text-muted);">one-off</span></div>
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">Single one-time payment · Lifetime PDF access</div>
+          <div style="display:inline-block;padding:var(--space-1) var(--space-3);background:var(--color-bg);color:var(--color-text-muted);border:1px solid var(--color-border);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--weight-bold);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:var(--space-2);">Money Plan PDF + toolkits</div>
+          <h3 style="font-size:var(--text-xl);margin-bottom:var(--space-2);color:var(--color-text);">Your plan, plus step-by-step toolkits</h3>
+          <p style="color:var(--color-text-muted);margin-bottom:var(--space-4);font-size:var(--text-sm);">Everything in the Money Plan PDF, plus the toolkits that fit your situation.</p>
+          <div style="font-size:var(--text-display);font-weight:800;color:var(--color-text);margin-bottom:var(--space-1);"><span data-tier-price="complete">A$159</span> <span style="font-size:var(--text-base);font-weight:var(--weight-normal);color:var(--color-text-muted);">one-off</span></div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-muted);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">One payment · No subscription</div>
           <ul class="check-list" style="font-size:var(--text-sm);margin-bottom:var(--space-6);">
-            <li><strong>7-Section Custom Strategy Report:</strong> Tailored to your exact debt balances and pay cycle</li>
-            <li><strong>12-Month Debt Payoff Roadmap:</strong> Step-by-step month-by-month acceleration plan</li>
-            <li><strong>Inflation & Rate Stress-Test:</strong> Sensitivity analysis on rate hikes</li>
-            <li><strong>All 3 Negotiation Toolkits:</strong> Static reference toolkits included</li>
-            <li><strong>Standard 14-Day Review:</strong> 100% satisfaction assurance</li>
+            <li><strong>Everything in the Money Plan PDF</strong></li>
+            <li><strong>Payday automation:</strong> set up your accounts once so each pay splits itself</li>
+            <li><strong>Rate-cut phone call script</strong> for the debt you pay off first, if it charges interest</li>
+            <li><strong>Car dealer negotiation script</strong>, if you're planning a car</li>
           </ul>
         </div>
         <a href="app.html" class="price-cta" style="background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border);text-align:center;">Start with your free plan →</a>
@@ -366,7 +365,7 @@
     <details class="faq-item"><summary class="faq-q">Do I need to give you my bank details?</summary><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></details>
     <details class="faq-item"><summary class="faq-q">Is my information private?</summary><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></details>
     <details class="faq-item"><summary class="faq-q">Is the tool live now?</summary><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. Sign in with Google, run your plan — no bank details, no financial adviser required.</div></details>
-    <details class="faq-item"><summary class="faq-q">Why charge for the PDF Blueprint?</summary><div class="faq-a">It keeps the free tool genuinely free, with zero ads and zero lender kickbacks. While the web app is completely free, users can unlock the Core Strategy Report for A$39, or the Complete Blueprint for A$59 with 3 negotiation toolkits (saving A$3,000–$8,000 on car finance and loan interest). Plus, the Complete tier is backed by our 30-Day "100x Value" Money-Back Guarantee: if it doesn't uncover at least A$1,400 in potential savings, you get a prompt 100% refund.</div></details>
+    <details class="faq-item"><summary class="faq-q">Why charge for the PDF?</summary><div class="faq-a">It keeps the web app free, with no ads and no lender kickbacks. If you want your plan as a PDF, it's <span data-tier-price="plan">A$49</span> one-off, or <span data-tier-price="complete">A$159</span> one-off with the step-by-step toolkits. Both are a single payment. There is no subscription.</div></details>
   </div>
 </section>
 

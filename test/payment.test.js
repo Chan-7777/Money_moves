@@ -10,7 +10,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { validateState, validateCapturedAmount, PRICE, PRICE_MONTHLY, PRICE_AUDIT, VALID_PRICES } = require('../lib/validators');
+const { validateState, validateCapturedAmount, TIERS } = require('../lib/validators');
 
 const CURRENCY = 'AUD';
 
@@ -66,24 +66,24 @@ test('validateState: rejects savings exceeding ceiling', () => {
 
 // ── Price enforcement ─────────────────────────────────────────────────────────
 
-test('server price constants: 49.00 and 149.00 AUD', () => {
-  // Regression guard: these must match what create-order.js sends to PayPal.
-  assert.equal(PRICE_MONTHLY, '49.00');
-  assert.equal(PRICE_AUDIT, '149.00');
+test('server price constants: 49.00 and 159.00 AUD (P0-1, one-off)', () => {
+  // Regression guard: these are what create-order.js sends to PayPal.
+  assert.equal(TIERS.plan.price, '49.00');
+  assert.equal(TIERS.complete.price, '159.00');
   assert.equal(CURRENCY, 'AUD');
 });
 
-test('validateCapturedAmount: accepts both 49.00 and 149.00 AUD', () => {
-  const captureMonthly = {
+test('validateCapturedAmount: accepts both 49.00 and 159.00 AUD', () => {
+  const capturePlan = {
     status: 'COMPLETED',
     purchase_units: [{ payments: { captures: [{ amount: { value: '49.00', currency_code: 'AUD' } }] } }],
   };
-  const captureAudit = {
+  const captureComplete = {
     status: 'COMPLETED',
-    purchase_units: [{ payments: { captures: [{ amount: { value: '149.00', currency_code: 'AUD' } }] } }],
+    purchase_units: [{ payments: { captures: [{ amount: { value: '159.00', currency_code: 'AUD' } }] } }],
   };
-  assert.equal(validateCapturedAmount(captureMonthly), true);
-  assert.equal(validateCapturedAmount(captureAudit), true);
+  assert.equal(validateCapturedAmount(capturePlan), true);
+  assert.equal(validateCapturedAmount(captureComplete), true);
 });
 
 test('validateCapturedAmount: rejects underpriced capture (attack vector)', () => {

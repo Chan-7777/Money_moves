@@ -1,6 +1,7 @@
 'use strict';
 
 const { log } = require('../lib/logger');
+const { TIERS } = require('../lib/validators');
 
 const PAYPAL_BASE = process.env.PAYPAL_ENV === 'live'
   ? 'https://api-m.paypal.com'
@@ -42,15 +43,13 @@ module.exports = async function handler(req, res) {
   }
 
   // Price is authoritative on the server — never trust client-supplied amount.
-  const TIERS = {
-    copilot: { price: '49.00', desc: 'MoneyMoves AU — Active Co-Pilot (Month 1 Access + Bonuses)' },
-    audit: { price: '149.00', desc: 'MoneyMoves AU — One-Off Full Strategy Dossier' },
-    // Fallback aliases for backward compatibility
-    core: { price: '49.00', desc: 'MoneyMoves AU — Active Co-Pilot' },
-    complete: { price: '49.00', desc: 'MoneyMoves AU — Active Co-Pilot' },
-  };
-  const tierKey = (req.body?.tier === 'audit') ? 'audit' : 'copilot';
-  const selectedTier = TIERS[tierKey] || TIERS.copilot;
+  // An unknown tier (including the retired 'copilot' / 'audit') is refused, not defaulted,
+  // so a stale page can never be charged a price it did not show.
+  const tierKey = req.body?.tier;
+  if (typeof tierKey !== 'string' || !Object.hasOwn(TIERS, tierKey)) {
+    return res.status(400).json({ error: 'Unknown tier' });
+  }
+  const selectedTier = TIERS[tierKey];
   const PRICE = selectedTier.price;
   const CURRENCY = 'AUD';
   const { email } = req.body || {};

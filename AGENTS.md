@@ -17,8 +17,9 @@ The Stop hook enforces `npm test` + token lint automatically at turn end. The CI
 
 ## Money path — highest protection
 The payment flow (`api/create-order.js` → `api/capture-order.js`) must never be touched without explicit approval in the current message. Rules:
-- Price is authoritative **on the server** — `PRICE = '14.00'` in `create-order.js`. Never read amount from `req.body`.
-- Captured amount **must be validated** against `'14.00'` in `capture-order.js` before delivering the PDF.
+- Price is authoritative **on the server** — one list, `TIERS` in `lib/validators.js` (`plan` 49.00, `complete` 159.00, both one-off AUD). `create-order.js` charges from it and refuses unknown tiers; never read an amount from `req.body`.
+- Captured amount **must be validated** against `TIERS` (`validateCapturedAmount`) in `capture-order.js` before delivering the PDF; the paid tier decides whether toolkits are included.
+- Pages get prices from `/api/config`; `test/pricing.test.js` fails if any page shows a different price.
 - Do not add fallbacks, stubs, or `console.log` replacements to payment or email handlers.
 - Any change to `api/capture-order.js`, `api/create-order.js`, or `api/free-report.js` requires running `npm test` and showing pass output before reporting done.
 

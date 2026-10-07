@@ -1,7 +1,7 @@
 'use strict';
 
 const { generateReport } = require('../build_pdf_report');
-const { validateState, validateCapturedAmount } = require('../lib/validators');
+const { validateState, validateCapturedAmount, tierForAmount, TIERS } = require('../lib/validators');
 const { log } = require('../lib/logger');
 
 const PAYPAL_BASE = process.env.PAYPAL_ENV === 'live'
@@ -152,29 +152,23 @@ async function storeOrderRecord(orderID, record) {
 
 // ── Email delivery ────────────────────────────────────────────────────────────
 
-async function sendEmail(to, pdfBuffer, isComplete = true) {
+async function sendEmail(to, pdfBuffer, includeToolkits) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey || resendApiKey.includes('REPLACE_WITH')) {
     throw new Error('Email service is not configured on the server.');
   }
 
-  const subject = isComplete
-    ? 'Your MoneyMoves AU 12-Month Cashflow & Debt Blueprint (+ Bonuses)'
-    : 'Your MoneyMoves AU Core Decision Report';
+  const subject = includeToolkits
+    ? 'Your MoneyMoves AU money plan + toolkits'
+    : 'Your MoneyMoves AU money plan';
 
-  const bonusHtml = isComplete
-    ? `<ul>
-  <li><strong>Sections 1–7:</strong> Your personalised 12-month debt elimination roadmap, car purchase scenarios, 5-year running costs, and inflation stress-tests.</li>
-  <li><strong>Bonus Toolkit 1:</strong> Aussie Car Dealer Negotiation Script & Finance Checklist</li>
-  <li><strong>Bonus Toolkit 2:</strong> 5-Minute Aussie Bank Rate-Cut Cheatsheet</li>
-  <li><strong>Bonus Toolkit 3:</strong> Set-and-Forget Payday Automation Setup</li>
-</ul>
-<p><strong>Our 30-Day "100x Value" Guarantee:</strong> If this plan does not uncover at least A$1,400 in potential interest savings, lower loan costs, or cashflow improvements over the next 12 months, simply reply directly to this email within 30 days for a prompt, courteous 100% refund.</p>`
-    : `<p>Your personalized 7-section financial report is attached, featuring your 12-month debt roadmap, car scenarios, and cashflow map.</p>`;
+  const contentsHtml = includeToolkits
+    ? `<p>Your personalised money plan is attached as a PDF, with the action toolkits that fit your situation at the end.</p>`
+    : `<p>Your personalised money plan is attached as a PDF.</p>`;
 
-  const filename = isComplete
-    ? 'MoneyMoves_AU_12Month_Blueprint.pdf'
-    : 'MoneyMoves_AU_Core_Report.pdf';
+  const filename = includeToolkits
+    ? 'MoneyMoves_AU_Plan_and_Toolkits.pdf'
+    : 'MoneyMoves_AU_Plan.pdf';
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -187,8 +181,8 @@ async function sendEmail(to, pdfBuffer, isComplete = true) {
       to,
       subject,
       html: `<p>Hi there,</p>
-<p>Thanks for ordering! Your personalised financial decision pack is attached as a PDF.</p>
-${bonusHtml}
+<p>Thanks for your order.</p>
+${contentsHtml}
 <p>— The MoneyMoves AU Team</p>`,
       attachments: [{
         filename,
@@ -272,8 +266,9 @@ module.exports = async function handler(req, res) {
     }
 
     const capturedAmount = capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
-    const isComplete = (capturedAmount === '49.00' || capturedAmount === '149.00' || capturedAmount === '59.00');
-    const tierName = (capturedAmount === '149.00') ? 'audit' : 'copilot';
+    // validateCapturedAmount passed, so the amount matches exactly one tier.
+    const tierName = tierForAmount(capturedAmount);
+    const { includeToolkits } = TIERS[tierName];
 
     // Store capture record BEFORE expensive ops — so a retry after PDF/email
     // failure returns alreadyCaptured instead of hitting PayPal a second time.
@@ -288,7 +283,7 @@ module.exports = async function handler(req, res) {
     });
 
     // Generate DOCX → convert to PDF → email
-    const docxBuffer = await generateReport(state, { includeBonuses: isComplete });
+    const docxBuffer = await generateReport(state, { includeBonuses: includeToolkits });
     const pdfBuffer  = await convertToPdf(docxBuffer);
 
     let emailSent = false;
@@ -296,7 +291,7 @@ module.exports = async function handler(req, res) {
 
     if (state.email) {
       try {
-        await sendEmail(state.email, pdfBuffer, isComplete);
+        await sendEmail(state.email, pdfBuffer, includeToolkits);
         emailSent = true;
       } catch (err) {
         log('error', '[capture-order] email delivery failed', { orderID, error: err.message });
