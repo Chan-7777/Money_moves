@@ -12,7 +12,7 @@ Baseline (2026-10-07): live at moneymoves-au.vercel.app, `master` = `ad0356d`, `
 
 | ID | Item | Owner | Status | Branch | Commit | Tests added | Updated | Notes / not tested |
 |---|---|---|---|---|---|---|---|---|
-| P0-1 | One one-off price everywhere (landing, app, terms, FAQ, `api/config.js`) | Claude, after price decision | blocked (needs price) | | | | | Money path: needs approval |
+| P0-1 | One one-off price everywhere (landing, app, terms, FAQ, `api/config.js`) | Claude, after price decision | in progress (local branch, not pushed) | `p0-1-one-price` | `b6020cd` | `test/pricing.test.js` (23); 2 price tests in `payment.test.js` updated to new prices. `npm test` 63/63 | 2026-10-07 | Prices: plan A$49 (no toolkits), complete A$159 (toolkits), both one-off; payment-file edits approved 2026-10-07. Browser-checked on local server (real `api/config.js`, PayPal sandbox `sb`) at 1280px + 390px: index, app paid section, terms. **Not tested:** a real sandbox/live PayPal payment; post-payment screen in a browser (covered only by the capture-order handler test); Vercel preview; Resend email delivery. Free beta PDF (`api/free-report.js`) still includes the toolkits. |
 | P0-2 | Hide paid tier until live PayPal works | Claude | todo | | | | | |
 | P0-3 | Production Clerk instance + keys | User | todo | | | | | Removes "Development mode" |
 | P0-4 | Live PayPal credentials (`PAYPAL_ENV=live`) | User | todo | | | | | Then one real purchase test |
@@ -59,3 +59,4 @@ Baseline (2026-10-07): live at moneymoves-au.vercel.app, `master` = `ad0356d`, `
 | Date | Item | What changed | By |
 |---|---|---|---|
 | 2026-10-07 | — | Roadmap created from `docs/research/` | Claude |
+| 2026-10-07 | P0-1 | One-off prices A$49 / A$159 from one server list; monthly wording removed (`b6020cd`) | Claude |
