@@ -61,3 +61,4 @@ Baseline (2026-10-07): live at moneymoves-au.vercel.app, `master` = `ad0356d`, `
 | 2026-10-07 | — | Roadmap created from `docs/research/` | Claude |
 | 2026-10-07 | P0-1 | One-off prices A$49 / A$159 from one server list; monthly wording removed (`b6020cd`) | Claude |
 | 2026-10-08 | P0-2 | Paid options hidden unless `paidEnabled` from `/api/config` (`1ade4a1`) | Claude |
+| 2026-10-08 | — | Branch `fix-unsourced-copy` (on top of P0-2): invented rate figures, "monthly check-in" promise and stale promo-video price/domain removed (`d07b892`). Browser-checked after-payment screen with stubbed PayPal at 1280px + 390px | Claude |
