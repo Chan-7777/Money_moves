@@ -40,7 +40,7 @@ The payment flow (`api/create-order.js` → `api/capture-order.js`) must never b
 ## Key files
 | File | Role |
 |---|---|
-| `api/create-order.js` | Creates PayPal order — price hardcoded here |
+| `api/create-order.js` | Creates PayPal order — charges the price from `TIERS` in `lib/validators.js` |
 | `api/capture-order.js` | Captures payment, generates PDF, emails it |
 | `api/free-report.js` | Generates free PDF for beta users |
 | `api/capture-email.js` | Email capture for waitlist |
