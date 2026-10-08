@@ -21,6 +21,8 @@ Baseline (2026-10-07): live at moneymoves-au.vercel.app, `master` = `ad0356d`, `
 | P0-7 | Privacy policy lists Clerk, ConvertAPI, Firebase | Claude | todo | | | | | |
 | P0-8 | Lawyer check: personal vs general advice (AFSL) | User | todo | | | | | |
 | P0-9 | Fix pre-existing CI failures (nanoid, e2e "14", Stryker) | Claude | todo | | | | | |
+| P0-10 | Own domain for the site and email (contact address on privacy page) | User | todo | | | | | |
+| P0-11 | Verified Resend sending domain (emails currently come from onboarding@resend.dev and only reach the account owner) | User + Claude | todo | | | | | |
 
 ## Phase 1 — Quick wins (~58 questions)
 

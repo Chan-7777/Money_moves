@@ -42,6 +42,9 @@ breaking what is live.
 10. **Payment and auth stay untouched** (`api/create-order.js`, `api/capture-order.js`,
     `api/free-report.js`, Clerk setup) unless the item says otherwise and the user approves
     in the current message.
+11. **Parallel sessions:** every session works in its own git worktree
+    (`git worktree add ../mm-<item-id> <branch>`). Never switch branches, stash or commit in
+    a folder another session is using. Remove the worktree after the branch is merged.
 
 ## Finishing an item (every time)
 
