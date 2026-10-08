@@ -415,7 +415,7 @@ const SceneOutro = ({ frame, fps }) => {
             letterSpacing: '-0.03em',
           }}
         >
-          Get Your Personalized 7-Section Blueprint
+          Get Your Personalised Money Plan
         </h1>
         <p
           style={{
@@ -425,7 +425,7 @@ const SceneOutro = ({ frame, fps }) => {
             lineHeight: 1.5,
           }}
         >
-          Clear cash maps, exact debt payoff order, mortgage stress test, and 7-day action checklist tailored to your actual numbers.
+          A 12-month cash map, your debt payoff order, a 3-month income stress test and a dated action checklist, built from your own numbers.
         </p>
 
         <div
@@ -439,9 +439,9 @@ const SceneOutro = ({ frame, fps }) => {
             borderRadius: 14,
           }}
         >
-          <span style={{ fontSize: 24, fontWeight: 900, color: COLORS.navy }}>A$14.00</span>
+          <span style={{ fontSize: 24, fontWeight: 900, color: COLORS.navy }}>Free to try</span>
           <span style={{ color: COLORS.inkSoft, fontSize: 16 }}>•</span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.accent }}>moneymoves.com.au</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.accent }}>moneymoves-au.vercel.app</span>
         </div>
       </div>
     </AbsoluteFill>

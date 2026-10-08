@@ -1478,13 +1478,13 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   html += `
     <div class="email-card">
       <h4>📧 Email me this plan</h4>
-      <p>Get a clean copy of your ranked moves in your inbox plus a one-line monthly check-in. Unsubscribe any time.</p>
+      <p>Get a clean copy of your ranked moves in your inbox. We send it once.</p>
       <form class="email-row" id="results-email-form" novalidate>
         <input type="email" id="results-email" placeholder="your@email.com.au" required />
         <button type="submit" class="btn btn-primary">Send it</button>
       </form>
       <div class="field-error" id="results-email-err" style="margin-top: 8px;">Please enter a valid email address.</div>
-      <div class="email-success" id="results-email-success">✓ On its way. We'll only email you if you opt-in to monthly check-ins.</div>
+      <div class="email-success" id="results-email-success">✓ On its way.</div>
       <div class="share-row">
         <div class="share-label" style="width: 100%;">Share this tool</div>
         <button class="share-btn" onclick="shareCopy(this)">🔗 Copy link</button>
@@ -1870,19 +1870,14 @@ function initPayPalButton() {
         }
         const result = await resp.json();
         if (result.success) {
-          // Identify top priority target debt for Day 1 Cash Retrieval Mission
-          let topDebt = null;
-          if (state.debts && state.debts.length > 0) {
-            topDebt = [...state.debts].sort((a, b) => b.rate - a.rate)[0];
-          }
-          const lenderName = topDebt ? (niceType(topDebt.type) + ' Lender') : 'Your Primary Bank / Lender';
-          const balanceStr = topDebt ? fmt(topDebt.balance) : 'your current balance';
-          const currentRateStr = topDebt ? `${topDebt.rate}% p.a.` : 'your current rate';
-          const targetRateStr = topDebt ? `${Math.max(5.5, (topDebt.rate - 1.5)).toFixed(2)}% p.a.` : '1.50% lower';
-          // Saving from the 1.5-point rate cut the script asks for — computed, no floor. No debt → no estimate shown.
-          const estMonthlySavings = topDebt ? fmt(Math.round(topDebt.balance * 0.015 / 12)) : null;
-
-          const retrievalScript = `Hi, I am reviewing my loan balance of ${balanceStr} currently with you at ${currentRateStr}. I see comparable prime Australian lenders offering around ${targetRateStr}. I would prefer to remain a customer today if you can match that rate and waive this year's account fee. If your retention team cannot authorize this adjustment, please transfer me directly to discharge so I can obtain my final payout figure.`;
+          // The highest-rate debt you can ask a lender to reprice. HECS is indexed (not negotiable)
+          // and the ATO is not a lender, so neither gets a call script.
+          const callDebt = (state.debts || [])
+            .filter(d => d.rate > 0 && d.balance > 0 && !['hecs', 'ato'].includes(d.type))
+            .sort((a, b) => b.rate - a.rate)[0] || null;
+          const retrievalScript = callDebt
+            ? `Hi, I'm reviewing my ${niceType(callDebt.type)} with you. The balance is ${fmt(callDebt.balance)} at ${callDebt.rate}% p.a. I've been comparing offers from other lenders and I'd like to stay with you if you can lower my rate or waive this year's annual fee. If you can't, could you tell me my payout figure so I can compare my options?`
+            : null;
 
           let msg = `<div style="text-align:left;padding:var(--space-5);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-lg);margin-top:var(--space-2);">`;
           msg += `<div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3);color:var(--color-success);font-weight:var(--weight-bold);font-size:var(--text-lg);">`;
@@ -1897,18 +1892,16 @@ function initPayPalButton() {
             msg += `<p style="font-size:var(--text-sm);color:var(--color-danger);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);">We could not email your PDF (${result.emailError || 'email delivery issue'}), but you can download it below directly.</p>`;
           }
 
-          // ─── Post-Payment AHA: Day 1 Cash Retrieval Mission ───
-          msg += `
+          // ─── After payment: one call that can lower what the debt costs ───
+          if (callDebt) {
+            msg += `
             <div style="background:var(--color-accent-soft);border:1.5px solid var(--color-accent);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);flex-wrap:wrap;gap:var(--space-2);">
-                <div style="font-size:var(--text-xs);font-weight:var(--weight-extrabold);text-transform:uppercase;color:var(--color-accent-dark);letter-spacing:0.05em;">
-                  🎯 Your first call: ask for a lower rate
-                </div>
-                ${estMonthlySavings ? `<span style="font-size:var(--text-xs);background:var(--color-accent);color:var(--color-surface);padding:2px var(--space-2);border-radius:var(--radius-full);font-weight:var(--weight-bold);">If they cut 1.5 points: ~${estMonthlySavings}/mo</span>` : ''}
+              <div style="font-size:var(--text-xs);font-weight:var(--weight-extrabold);text-transform:uppercase;color:var(--color-accent-dark);letter-spacing:0.05em;margin-bottom:var(--space-2);">
+                🎯 Your first call: ask for a lower rate
               </div>
-              <h4 style="font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-2);">Word-for-Word Bank Retention Script</h4>
+              <h4 style="font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-2);">What to say to your ${niceType(callDebt.type)} lender</h4>
               <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
-                Call <strong>${lenderName}</strong> right now and ask for the <em>Customer Retention / Discharges</em> team. Read this word-for-word:
+                Before you call, look up two or three real offers on Finder, Mozo or Canstar and note the best one. Then call your lender, ask for the <em>retention</em> team and say:
               </p>
               <div id="retrieval-script-text" style="background:var(--color-surface);border:1px solid var(--color-border);border-left:4px solid var(--color-accent);padding:var(--space-3);border-radius:var(--radius-sm);font-size:var(--text-sm);line-height:1.5;color:var(--color-text);font-style:italic;margin-bottom:var(--space-3);">
                 "${retrievalScript}"
@@ -1916,12 +1909,14 @@ function initPayPalButton() {
               <div style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
                 <button id="copy-retrieval-script-btn" class="btn btn-secondary" style="font-size:var(--text-xs);padding:var(--space-2) var(--space-3);font-weight:var(--weight-bold);cursor:pointer;">
                   📋 Copy Script to Clipboard
-                </button>              </div>
+                </button>
+              </div>
             </div>
           `;
+          }
 
           if (result.pdfData) {
-            msg += `<div style="text-align:center;"><button id="download-paid-pdf-btn" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-6);font-size:var(--text-base);cursor:pointer;">⬇ Download Your Blueprint PDF</button></div>`;
+            msg += `<div style="text-align:center;"><button id="download-paid-pdf-btn" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-6);font-size:var(--text-base);cursor:pointer;">⬇ Download your PDF</button></div>`;
           }
           msg += `</div>`;
           container.innerHTML = msg;
