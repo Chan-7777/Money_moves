@@ -521,6 +521,9 @@
   .auth-overlay-legal a { color: inherit; }
   .nav-user { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
   .nav-signout { font-size: var(--text-xs); color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0; }
+
+  /* P0-2: paid-only blocks stay hidden until /api/config says the paid tier is live. */
+  [data-paid-only][hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -1505,8 +1508,8 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
         <button id="pdf-download-btn" onclick="downloadPdf()" class="btn btn-primary pdf-download-btn" style="display:inline-flex;align-items:center;gap:var(--space-2);">⬇ Download my free PDF</button>
         <div id="pdf-error" style="display:none;padding:var(--space-3);background:var(--color-danger-soft);border-radius:var(--radius-sm);color:var(--color-danger);margin-top:var(--space-2);">Something went wrong — please try again.</div>
 
-        <!-- One-off options teaser -->
-        <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-md);text-align:left;">
+        <!-- One-off options teaser (P0-2: hidden until /api/config says the paid tier is live) -->
+        <div data-paid-only hidden style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-md);text-align:left;">
           <div style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--color-accent-dark);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-2);">One-off options</div>
           <div style="font-weight:var(--weight-bold);font-size:var(--text-md);color:var(--color-text);margin-bottom:var(--space-1);">Money Plan PDF, with or without toolkits</div>
           <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);">
@@ -1610,6 +1613,7 @@ function renderResults({ moves, flags, surplus, bufferMonths, monthlyEssentials,
   `;
 
   document.getElementById('results').innerHTML = html;
+  revealPaidOptions();
   const resultsEmail = document.getElementById('results-email');
   if (resultsEmail && state.email) resultsEmail.value = state.email;
   clearLocalDraft();
@@ -1771,16 +1775,30 @@ async function downloadPdf() {
 // Fetches the live client ID from /api/config (env var), injects the SDK script
 // once, and resolves. Safe to call multiple times — deduplicates via promise cache.
 let _paypalSdkReady = null;
+let _configReady = null;
+
+// /api/config, fetched once. Resolves to null when the server answers with an error
+// (e.g. 503: PayPal not configured), which means the paid tier is not available.
+function loadConfig() {
+  if (!_configReady) _configReady = fetch('/api/config').then(r => (r.ok ? r.json() : null));
+  return _configReady;
+}
+
+// P0-2: the paid options teaser stays hidden unless the server says the paid tier is live.
+function revealPaidOptions() {
+  return loadConfig().then(cfg => {
+    if (!cfg || cfg.paidEnabled !== true) return;
+    applyServerPrices(cfg.prices);
+    document.querySelectorAll('[data-paid-only]').forEach(el => { el.hidden = false; });
+  });
+}
 
 async function loadPayPalSdk() {
   if (typeof paypal !== 'undefined') return;
   if (_paypalSdkReady) return _paypalSdkReady;
-  _paypalSdkReady = fetch('/api/config')
-    .then(r => {
-      if (!r.ok) throw new Error('Failed to fetch PayPal configuration from server');
-      return r.json();
-    })
+  _paypalSdkReady = loadConfig()
     .then((cfg) => {
+      if (!cfg) throw new Error('Failed to fetch PayPal configuration from server');
       applyServerPrices(cfg.prices);
       const { paypalClientId } = cfg;
       if (!paypalClientId) throw new Error('PAYPAL_CLIENT_ID not set on server');

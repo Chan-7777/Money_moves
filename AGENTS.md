@@ -44,7 +44,7 @@ The payment flow (`api/create-order.js` → `api/capture-order.js`) must never b
 | `api/capture-order.js` | Captures payment, generates PDF, emails it |
 | `api/free-report.js` | Generates free PDF for beta users |
 | `api/capture-email.js` | Email capture for waitlist |
-| `api/config.js` | Serves PayPal client ID to frontend |
+| `api/config.js` | Serves PayPal client ID, prices and `paidEnabled` (on only when `PAID_TIER_ENABLED=true`, and in production only with `PAYPAL_ENV=live`) |
 | `build_pdf_report.js` | DOCX report generator (all 7 sections) |
 | `design-system/tokens.css` | Single source of truth for all design tokens |
 | `design-system/lint-tokens.sh` | Fails if any frontend file uses raw hex/px |

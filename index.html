@@ -206,6 +206,9 @@
   @media (max-width: 640px) {
     .pricing-wrap { grid-template-columns: 1fr; padding: var(--space-6); }
   }
+
+  /* P0-2: paid-only blocks stay hidden until /api/config says the paid tier is live. */
+  [data-paid-only][hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -299,7 +302,7 @@
   </div>
 </section>
 
-<section>
+<section data-paid-only hidden>
   <div class="container">
     <div class="section-head">
       <h2>The free tool stays free. Upgrade when you're ready.</h2>
@@ -365,7 +368,7 @@
     <details class="faq-item"><summary class="faq-q">Do I need to give you my bank details?</summary><div class="faq-a">Never. The tool only asks for the numbers you'd punch into a calculator — balances, rates, monthly income. No logins, no Open Banking, no data scraping.</div></details>
     <details class="faq-item"><summary class="faq-q">Is my information private?</summary><div class="faq-a">Yes. We don't store your financial inputs. Email is only used to notify you about the launch and major updates — unsubscribe any time.</div></details>
     <details class="faq-item"><summary class="faq-q">Is the tool live now?</summary><div class="faq-a">Yes — the free tool is live right now. Click "Try it free" at the top of the page. Sign in with Google, run your plan — no bank details, no financial adviser required.</div></details>
-    <details class="faq-item"><summary class="faq-q">Why charge for the PDF?</summary><div class="faq-a">It keeps the web app free, with no ads and no lender kickbacks. If you want your plan as a PDF, it's <span data-tier-price="plan">A$49</span> one-off, or <span data-tier-price="complete">A$159</span> one-off with the step-by-step toolkits. Both are a single payment. There is no subscription.</div></details>
+    <details class="faq-item" data-paid-only hidden><summary class="faq-q">Why charge for the PDF?</summary><div class="faq-a">It keeps the web app free, with no ads and no lender kickbacks. If you want your plan as a PDF, it's <span data-tier-price="plan">A$49</span> one-off, or <span data-tier-price="complete">A$159</span> one-off with the step-by-step toolkits. Both are a single payment. There is no subscription.</div></details>
   </div>
 </section>
 
@@ -419,6 +422,21 @@
     firebase.database().ref('visitors').transaction(v => (v || 0) + 1);
     firebase.database().ref('visitors').on('value', snap => updateVisits(snap.val() || 0));
   }
+</script>
+
+<script>
+  // P0-2: prices and paid options stay hidden until the server says the paid tier is live.
+  // A 503 (PayPal not configured) means "not live"; prices shown come from the server list.
+  fetch('/api/config')
+    .then(r => (r.ok ? r.json() : null))
+    .then(cfg => {
+      if (!cfg || cfg.paidEnabled !== true) return;
+      document.querySelectorAll('[data-tier-price]').forEach(el => {
+        const price = cfg.prices[el.dataset.tierPrice];
+        el.textContent = 'A$' + price.replace(/\.00$/, '');
+      });
+      document.querySelectorAll('[data-paid-only]').forEach(el => { el.hidden = false; });
+    });
 </script>
 
 </body>
